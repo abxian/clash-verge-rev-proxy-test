@@ -821,42 +821,35 @@ async fn create_tray_menu(
     let separator = &PredefinedMenuItem::separator(app_handle)?;
 
     // 动态构建菜单项
-    let mut menu_items: Vec<&dyn IsMenuItem<Wry>> = vec![open_window, separator];
+    let mut menu_items: Vec<&dyn IsMenuItem<Wry>> =
+        vec![system_proxy as &dyn IsMenuItem<Wry>, tun_mode as &dyn IsMenuItem<Wry>];
 
-    if show_outbound_modes_inline {
-        menu_items.extend_from_slice(&[
-            rule_mode as &dyn IsMenuItem<Wry>,
-            global_mode as &dyn IsMenuItem<Wry>,
-            direct_mode as &dyn IsMenuItem<Wry>,
-        ]);
-    } else if let Some(ref outbound_modes) = outbound_modes {
-        menu_items.push(outbound_modes);
-    }
-
-    menu_items.extend_from_slice(&[separator, profiles]);
+    let _ = (
+        open_window,
+        rule_mode,
+        global_mode,
+        direct_mode,
+        outbound_modes.as_ref(),
+        profiles,
+        lightweight_mode,
+        open_dir,
+        more,
+        quit,
+        show_outbound_modes_inline,
+    );
 
     // 如果有代理节点，添加代理节点菜单
     match tray_proxy_groups_display_mode {
         "default" => {
+            menu_items.push(separator);
             menu_items.extend(proxies_menu.iter().map(|item| item as &dyn IsMenuItem<_>));
         }
         "inline" if !inline_proxy_items.is_empty() => {
+            menu_items.push(separator);
             menu_items.extend(inline_proxy_items.iter().map(|item| item.as_ref()));
         }
         _ => {}
     }
-
-    menu_items.extend_from_slice(&[
-        separator,
-        system_proxy as &dyn IsMenuItem<Wry>,
-        tun_mode as &dyn IsMenuItem<Wry>,
-        separator,
-        lightweight_mode as &dyn IsMenuItem<Wry>,
-        open_dir as &dyn IsMenuItem<Wry>,
-        more as &dyn IsMenuItem<Wry>,
-        separator,
-        quit as &dyn IsMenuItem<Wry>,
-    ]);
 
     let menu = tauri::menu::MenuBuilder::new(app_handle).items(&menu_items).build()?;
     Ok(menu)

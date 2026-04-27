@@ -5,6 +5,7 @@ import {
   LanguageRounded,
   PowerSettingsNewRounded,
   ShoppingCartRounded,
+  SpeedRounded,
   TuneRounded,
 } from '@mui/icons-material'
 import {
@@ -45,9 +46,11 @@ import {
   stopCore,
   updateProfile,
 } from '@/services/cmds'
+import delayManager from '@/services/delay'
 
 const SUBSCRIPTION_BASE_URL = 'https://sub.jc116.com'
 const CODE_STORAGE_KEY = 'shenxianyun.accessCode'
+const DELAY_TIMEOUT = 5000
 
 type VerifyResponse = {
   ok?: boolean
@@ -55,12 +58,6 @@ type VerifyResponse = {
   expires_at?: string
   subscription_url?: string
   message?: string
-}
-
-const nodeLabel = (proxy: IProxyItem) => {
-  const delay = proxy.history?.at(-1)?.delay
-  const delayText = delay && delay > 0 && delay < 100000 ? ` · ${delay}ms` : ''
-  return `${proxy.name}${delayText}`
 }
 
 const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
@@ -82,12 +79,38 @@ const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
   )
 }
 
+const getNodeDelay = (proxy: IProxyItem, groupName = '') => {
+  const testedDelay = groupName ? delayManager.getDelayFix(proxy, groupName) : -1
+  if (testedDelay >= 0) return testedDelay
+  return proxy.history?.at(-1)?.delay ?? -1
+}
+
+const formatNodeLabel = (proxy: IProxyItem, groupName = '') => {
+  const delay = getNodeDelay(proxy, groupName)
+  if (delay === -2) return `${proxy.name} · 测试中`
+  if (delay === 0 || delay >= DELAY_TIMEOUT) return `${proxy.name} · 超时`
+  if (delay > 0 && delay < 100000) return `${proxy.name} · ${delay}ms`
+  return proxy.name
+}
+
+const delayRank = (proxy: IProxyItem, groupName = '') => {
+  const delay = getNodeDelay(proxy, groupName)
+  if (delay > 0 && delay < DELAY_TIMEOUT) return delay
+  if (delay === 0 || delay >= DELAY_TIMEOUT) return DELAY_TIMEOUT + 1
+  return Number.MAX_SAFE_INTEGER
+}
+
 const HomePage = () => {
   const { verge, patchVerge } = useVerge()
   const { profiles, current, mutateProfiles } = useProfiles()
   const { proxies, clashConfig, refreshAll, refreshClashConfig, refreshProxy } =
     useAppData()
-  const { indicator: systemProxyOn, toggleSystemProxy } = useSystemProxyState()
+  const {
+    indicator: systemProxyOn,
+    configState: systemProxyConfigOn,
+    toggleSystemProxy,
+    invalidateProxyState,
+  } = useSystemProxyState()
   const { isTunModeAvailable, mutateSystemState } = useSystemState()
   const { changeProxy } = useProxySelection({
     onSuccess: () => {
@@ -100,6 +123,8 @@ const HomePage = () => {
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('输入提取码后导入订阅。')
   const [busy, setBusy] = useState(false)
+  const [delayTesting, setDelayTesting] = useState(false)
+  const [delaySortTick, setDelaySortTick] = useState(0)
   const [runningOverride, setRunningOverride] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -112,16 +137,19 @@ const HomePage = () => {
   )
   const nodes = useMemo(
     () =>
-      (primaryGroup?.all || []).filter(
-        (proxy) => !['DIRECT', 'REJECT'].includes(proxy.name),
-      ),
-    [primaryGroup],
+      (primaryGroup?.all || [])
+        .filter((proxy) => !['DIRECT', 'REJECT'].includes(proxy.name))
+        .toSorted(
+          (a, b) =>
+            delayRank(a, primaryGroup?.name) - delayRank(b, primaryGroup?.name),
+        ),
+    [primaryGroup, delaySortTick],
   )
 
   const selectedNode = primaryGroup?.now || ''
   const mode = (clashConfig?.mode || 'rule').toLowerCase()
   const tunOn = verge?.enable_tun_mode || false
-  const actualRunning = tunOn || systemProxyOn
+  const actualRunning = tunOn || systemProxyOn || systemProxyConfigOn
   const running = runningOverride ?? actualRunning
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
 
@@ -210,11 +238,16 @@ const HomePage = () => {
     try {
       if (running) {
         if (tunOn) await patchVerge({ enable_tun_mode: false })
-        if (systemProxyOn) await toggleSystemProxy(false)
+        if (systemProxyOn || systemProxyConfigOn) {
+          await toggleSystemProxy(false)
+        } else {
+          await patchVerge({ enable_system_proxy: false })
+        }
         await stopCore().catch(() => {})
+        await invalidateProxyState()
+        await refreshAll()
         setRunningOverride(false)
         setStatus('已停止代理')
-        await refreshAll()
         return
       }
 
@@ -234,7 +267,7 @@ const HomePage = () => {
 
       if (isTunModeAvailable) {
         await patchVerge({ enable_tun_mode: true })
-        if (systemProxyOn) await toggleSystemProxy(false)
+        if (systemProxyOn || systemProxyConfigOn) await toggleSystemProxy(false)
         setRunningOverride(true)
         setStatus('已启动 TUN 模式，按钮可点击停止')
       } else {
@@ -242,6 +275,7 @@ const HomePage = () => {
         setRunningOverride(true)
         setStatus('已启动系统代理，按钮可点击停止')
       }
+      await invalidateProxyState()
       await refreshAll()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error))
@@ -268,6 +302,31 @@ const HomePage = () => {
     if (!primaryGroup || !value) return
     changeProxy(primaryGroup.name, value, primaryGroup.now)
   }
+
+  const testNodeDelay = useLockFn(async () => {
+    if (!primaryGroup || nodes.length === 0) {
+      setStatus('没有可测试的节点')
+      return
+    }
+
+    setDelayTesting(true)
+    setStatus('正在测试节点延迟...')
+    try {
+      await delayManager.checkListDelay(
+        nodes.map((node) => node.name),
+        primaryGroup.name,
+        DELAY_TIMEOUT,
+        8,
+      )
+      setDelaySortTick((tick) => tick + 1)
+      await refreshProxy()
+      setStatus('延迟测试完成，低延迟节点已排在前面')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setDelayTesting(false)
+    }
+  })
 
   return (
     <BasePage title="神仙云">
@@ -358,21 +417,32 @@ const HomePage = () => {
                 <ToggleButton value="global">全局模式</ToggleButton>
               </ToggleButtonGroup>
 
-              <FormControl fullWidth>
-                <InputLabel>选择节点</InputLabel>
-                <Select
-                  label="选择节点"
-                  value={selectedNode}
-                  onChange={(event) => changeNode(event.target.value)}
-                  disabled={!primaryGroup || nodes.length === 0}
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: '100%' }}>
+                <FormControl fullWidth>
+                  <InputLabel>选择节点</InputLabel>
+                  <Select
+                    label="选择节点"
+                    value={selectedNode}
+                    onChange={(event) => changeNode(event.target.value)}
+                    disabled={!primaryGroup || nodes.length === 0}
+                  >
+                    {nodes.map((node) => (
+                      <MenuItem key={node.name} value={node.name}>
+                        {formatNodeLabel(node, primaryGroup?.name)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button
+                  variant="outlined"
+                  startIcon={<SpeedRounded />}
+                  disabled={busy || delayTesting || nodes.length === 0}
+                  onClick={testNodeDelay}
+                  sx={{ minWidth: 132 }}
                 >
-                  {nodes.map((node) => (
-                    <MenuItem key={node.name} value={node.name}>
-                      {nodeLabel(node)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                  {delayTesting ? '测试中' : '测延迟'}
+                </Button>
+              </Stack>
 
               <Stack
                 direction={{ xs: 'column', sm: 'row' }}

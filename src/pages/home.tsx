@@ -100,6 +100,7 @@ const HomePage = () => {
   const [code, setCode] = useState('')
   const [status, setStatus] = useState('输入提取码后导入订阅。')
   const [busy, setBusy] = useState(false)
+  const [runningOverride, setRunningOverride] = useState<boolean | null>(null)
 
   useEffect(() => {
     setCode(localStorage.getItem(CODE_STORAGE_KEY) || '')
@@ -120,8 +121,15 @@ const HomePage = () => {
   const selectedNode = primaryGroup?.now || ''
   const mode = (clashConfig?.mode || 'rule').toLowerCase()
   const tunOn = verge?.enable_tun_mode || false
-  const running = tunOn || systemProxyOn
+  const actualRunning = tunOn || systemProxyOn
+  const running = runningOverride ?? actualRunning
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
+
+  useEffect(() => {
+    if (runningOverride !== null && actualRunning === runningOverride) {
+      setRunningOverride(null)
+    }
+  }, [actualRunning, runningOverride])
 
   const verifyCode = async (input: string): Promise<VerifyResponse> => {
     const response = await tauriFetch(
@@ -204,6 +212,7 @@ const HomePage = () => {
         if (tunOn) await patchVerge({ enable_tun_mode: false })
         if (systemProxyOn) await toggleSystemProxy(false)
         await stopCore().catch(() => {})
+        setRunningOverride(false)
         setStatus('已停止代理')
         await refreshAll()
         return
@@ -226,10 +235,12 @@ const HomePage = () => {
       if (isTunModeAvailable) {
         await patchVerge({ enable_tun_mode: true })
         if (systemProxyOn) await toggleSystemProxy(false)
-        setStatus('已启动 TUN 模式')
+        setRunningOverride(true)
+        setStatus('已启动 TUN 模式，按钮可点击停止')
       } else {
         await toggleSystemProxy(true)
-        setStatus('已启动系统代理')
+        setRunningOverride(true)
+        setStatus('已启动系统代理，按钮可点击停止')
       }
       await refreshAll()
     } catch (error) {

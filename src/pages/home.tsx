@@ -1,440 +1,397 @@
 import {
-  DnsOutlined,
-  HelpOutlineRounded,
-  HistoryEduOutlined,
-  RouterOutlined,
-  SettingsOutlined,
-  SpeedOutlined,
+  BoltRounded,
+  CloudSyncRounded,
+  KeyRounded,
+  LanguageRounded,
+  PowerSettingsNewRounded,
+  ShoppingCartRounded,
+  TuneRounded,
 } from '@mui/icons-material'
 import {
+  Alert,
   Box,
   Button,
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  FormGroup,
-  Grid,
-  IconButton,
-  Skeleton,
-  Tooltip,
+  Chip,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from '@mui/material'
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
-import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useEffect, useMemo, useState } from 'react'
 
 import { BasePage } from '@/components/base'
-import { ClashModeCard } from '@/components/home/clash-mode-card'
-import { CurrentProxyCard } from '@/components/home/current-proxy-card'
-import { EnhancedCard } from '@/components/home/enhanced-card'
-import { EnhancedTrafficStats } from '@/components/home/enhanced-traffic-stats'
-import { HomeProfileCard } from '@/components/home/home-profile-card'
-import { ProxyTunCard } from '@/components/home/proxy-tun-card'
 import { useProfiles } from '@/hooks/use-profiles'
+import { useProxySelection } from '@/hooks/use-proxy-selection'
+import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
+import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
-import { entry_lightweight_mode, openWebUrl } from '@/services/cmds'
+import { useAppData } from '@/providers/app-data-context'
+import {
+  importProfile,
+  openWebUrl,
+  patchClashMode,
+  updateProfile,
+} from '@/services/cmds'
 
-const LazyTestCard = lazy(() =>
-  import('@/components/home/test-card').then((module) => ({
-    default: module.TestCard,
-  })),
-)
-const LazyIpInfoCard = lazy(() =>
-  import('@/components/home/ip-info-card').then((module) => ({
-    default: module.IpInfoCard,
-  })),
-)
-const LazyClashInfoCard = lazy(() =>
-  import('@/components/home/clash-info-card').then((module) => ({
-    default: module.ClashInfoCard,
-  })),
-)
-const LazySystemInfoCard = lazy(() =>
-  import('@/components/home/system-info-card').then((module) => ({
-    default: module.SystemInfoCard,
-  })),
-)
+const SUBSCRIPTION_BASE_URL = 'https://sub.jc116.com'
+const CODE_STORAGE_KEY = 'shenxianyun.accessCode'
 
-// 定义首页卡片设置接口
-interface HomeCardsSettings {
-  profile: boolean
-  proxy: boolean
-  network: boolean
-  mode: boolean
-  traffic: boolean
-  info: boolean
-  clashinfo: boolean
-  systeminfo: boolean
-  test: boolean
-  ip: boolean
-  [key: string]: boolean
+type VerifyResponse = {
+  ok?: boolean
+  name?: string
+  expires_at?: string
+  subscription_url?: string
+  message?: string
 }
 
-// 首页设置对话框组件接口
-interface HomeSettingsDialogProps {
-  open: boolean
-  onClose: () => void
-  homeCards: HomeCardsSettings
-  onSave: (cards: HomeCardsSettings) => void
+const nodeLabel = (proxy: IProxyItem) => {
+  const delay = proxy.history?.at(-1)?.delay
+  const delayText = delay && delay > 0 && delay < 100000 ? ` · ${delay}ms` : ''
+  return `${proxy.name}${delayText}`
 }
 
-const serializeCardFlags = (cards: HomeCardsSettings) =>
-  Object.keys(cards)
-    .sort()
-    .map((key) => `${key}:${cards[key] ? 1 : 0}`)
-    .join('|')
-
-// 首页设置对话框组件
-const HomeSettingsDialog = ({
-  open,
-  onClose,
-  homeCards,
-  onSave,
-}: HomeSettingsDialogProps) => {
-  const { t } = useTranslation()
-  const [cards, setCards] = useState<HomeCardsSettings>(homeCards)
-  const { patchVerge } = useVerge()
-
-  const handleToggle = (key: string) => {
-    setCards((prev: HomeCardsSettings) => ({
-      ...prev,
-      [key]: !prev[key],
-    }))
-  }
-
-  const handleSave = async () => {
-    await patchVerge({ home_cards: cards })
-    onSave(cards)
-    onClose()
-  }
+const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
+  const selectable = groups.filter((group) => {
+    const type = String(group.type || '').toLowerCase()
+    return type === 'selector' || type === 'urltest' || type === 'fallback'
+  })
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{t('home.page.settings.title')}</DialogTitle>
-      <DialogContent>
-        <FormGroup>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.profile || false}
-                onChange={() => handleToggle('profile')}
-              />
-            }
-            label={t('home.page.settings.cards.profile')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.proxy || false}
-                onChange={() => handleToggle('proxy')}
-              />
-            }
-            label={t('home.page.settings.cards.currentProxy')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.network || false}
-                onChange={() => handleToggle('network')}
-              />
-            }
-            label={t('home.page.settings.cards.network')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.mode || false}
-                onChange={() => handleToggle('mode')}
-              />
-            }
-            label={t('home.page.settings.cards.proxyMode')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.traffic || false}
-                onChange={() => handleToggle('traffic')}
-              />
-            }
-            label={t('home.page.settings.cards.traffic')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.test || false}
-                onChange={() => handleToggle('test')}
-              />
-            }
-            label={t('home.page.settings.cards.tests')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.ip || false}
-                onChange={() => handleToggle('ip')}
-              />
-            }
-            label={t('home.page.settings.cards.ip')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.clashinfo || false}
-                onChange={() => handleToggle('clashinfo')}
-              />
-            }
-            label={t('home.page.settings.cards.clashInfo')}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={cards.systeminfo || false}
-                onChange={() => handleToggle('systeminfo')}
-              />
-            }
-            label={t('home.page.settings.cards.systemInfo')}
-          />
-        </FormGroup>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>{t('shared.actions.cancel')}</Button>
-        <Button onClick={handleSave} color="primary">
-          {t('shared.actions.save')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    selectable.find((group) =>
+      ['节点', '选择', 'select', 'proxy'].some((keyword) =>
+        group.name.toLowerCase().includes(keyword.toLowerCase()),
+      ),
+    ) ||
+    selectable.find((group) =>
+      group.all?.some((proxy) => !['DIRECT', 'REJECT'].includes(proxy.name)),
+    ) ||
+    groups[0]
   )
 }
 
 const HomePage = () => {
-  const { t } = useTranslation()
-  const { verge } = useVerge()
-  const { current, mutateProfiles } = useProfiles()
-
-  // 设置弹窗的状态
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [localHomeCards, setLocalHomeCards] = useState<{
-    value: HomeCardsSettings
-    baseSignature: string
-  } | null>(null)
-
-  // 卡片显示状态
-  const defaultCards = useMemo<HomeCardsSettings>(
-    () => ({
-      info: false,
-      profile: true,
-      proxy: true,
-      network: true,
-      mode: true,
-      traffic: true,
-      clashinfo: true,
-      systeminfo: true,
-      test: true,
-      ip: true,
-    }),
-    [],
-  )
-
-  const vergeHomeCards = useMemo<HomeCardsSettings | null>(
-    () => (verge?.home_cards as HomeCardsSettings | undefined) ?? null,
-    [verge],
-  )
-
-  const remoteHomeCards = useMemo<HomeCardsSettings>(
-    () => vergeHomeCards ?? defaultCards,
-    [defaultCards, vergeHomeCards],
-  )
-
-  const remoteSignature = useMemo(
-    () => serializeCardFlags(remoteHomeCards),
-    [remoteHomeCards],
-  )
-
-  const pendingLocalCards = useMemo<HomeCardsSettings | null>(() => {
-    if (!localHomeCards) return null
-    return localHomeCards.baseSignature === remoteSignature
-      ? localHomeCards.value
-      : null
-  }, [localHomeCards, remoteSignature])
-
-  const effectiveHomeCards = pendingLocalCards ?? remoteHomeCards
-
-  // 文档链接函数
-  const toGithubDoc = useLockFn(() => {
-    return openWebUrl('https://clash-verge-rev.github.io/index.html')
+  const { verge, patchVerge } = useVerge()
+  const { profiles, current, mutateProfiles } = useProfiles()
+  const { proxies, clashConfig, refreshAll, refreshClashConfig, refreshProxy } =
+    useAppData()
+  const { indicator: systemProxyOn, toggleSystemProxy } = useSystemProxyState()
+  const { isTunModeAvailable } = useSystemState()
+  const { changeProxy } = useProxySelection({
+    onSuccess: () => {
+      setStatus('节点已切换')
+      refreshProxy().catch(() => {})
+    },
+    onError: () => setStatus('节点切换失败'),
   })
 
-  // 新增：打开设置弹窗
-  const openSettings = useCallback(() => {
-    setSettingsOpen(true)
+  const [code, setCode] = useState('')
+  const [status, setStatus] = useState('输入提取码后导入订阅。')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    setCode(localStorage.getItem(CODE_STORAGE_KEY) || '')
   }, [])
 
-  const renderCard = useCallback(
-    (cardKey: string, component: React.ReactNode, size: number = 6) => {
-      if (!effectiveHomeCards[cardKey]) return null
-
-      return (
-        <Grid size={size} key={cardKey}>
-          {component}
-        </Grid>
-      )
-    },
-    [effectiveHomeCards],
+  const primaryGroup = useMemo(
+    () => pickPrimaryGroup((proxies?.groups || []) as IProxyGroupItem[]),
+    [proxies?.groups],
   )
-
-  const criticalCards = useMemo(
-    () => [
-      renderCard(
-        'profile',
-        <HomeProfileCard current={current} onProfileUpdated={mutateProfiles} />,
+  const nodes = useMemo(
+    () =>
+      (primaryGroup?.all || []).filter(
+        (proxy) => !['DIRECT', 'REJECT'].includes(proxy.name),
       ),
-      renderCard('proxy', <CurrentProxyCard />),
-      renderCard('network', <NetworkSettingsCard />),
-      renderCard('mode', <ClashModeEnhancedCard />),
-    ],
-    [current, mutateProfiles, renderCard],
+    [primaryGroup],
   )
 
-  // 新增：保存设置时用requestIdleCallback/setTimeout
-  const handleSaveSettings = (newCards: HomeCardsSettings) => {
-    if (window.requestIdleCallback) {
-      window.requestIdleCallback(() =>
-        setLocalHomeCards({
-          value: newCards,
-          baseSignature: remoteSignature,
-        }),
-      )
-    } else {
-      setTimeout(
-        () =>
-          setLocalHomeCards({
-            value: newCards,
-            baseSignature: remoteSignature,
-          }),
-        0,
-      )
+  const selectedNode = primaryGroup?.now || ''
+  const mode = (clashConfig?.mode || 'rule').toLowerCase()
+  const tunOn = verge?.enable_tun_mode || false
+  const running = tunOn || systemProxyOn
+  const activeProfileName = current?.name || profiles?.current || '未导入订阅'
+
+  const verifyCode = async (input: string): Promise<VerifyResponse> => {
+    const encoded = encodeURIComponent(input)
+    const response = await tauriFetch(
+      `${SUBSCRIPTION_BASE_URL}/api/verify/${encoded}`,
+      {
+        method: 'GET',
+        connectTimeout: 8000,
+      },
+    )
+    const data = (await response.json()) as VerifyResponse
+    if (!response.ok || !data.ok || !data.subscription_url) {
+      throw new Error(data.message || '提取码验证失败')
     }
+    return data
   }
 
-  const nonCriticalCards = useMemo(
-    () => [
-      renderCard(
-        'traffic',
-        <EnhancedCard
-          title={t('home.page.cards.trafficStats')}
-          icon={<SpeedOutlined />}
-          iconColor="secondary"
-        >
-          <EnhancedTrafficStats />
-        </EnhancedCard>,
-        12,
-      ),
-      renderCard(
-        'test',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyTestCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'ip',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyIpInfoCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'clashinfo',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazyClashInfoCard />
-        </Suspense>,
-      ),
-      renderCard(
-        'systeminfo',
-        <Suspense fallback={<Skeleton variant="rectangular" height={200} />}>
-          <LazySystemInfoCard />
-        </Suspense>,
-      ),
-    ],
-    [t, renderCard],
-  )
-  const dialogKey = useMemo(
-    () => `${serializeCardFlags(effectiveHomeCards)}:${settingsOpen ? 1 : 0}`,
-    [effectiveHomeCards, settingsOpen],
-  )
-  return (
-    <BasePage
-      title={t('home.page.title')}
-      contentStyle={{ padding: 2 }}
-      header={
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Tooltip title={t('home.page.tooltips.lightweightMode')} arrow>
-            <IconButton
-              onClick={async () => await entry_lightweight_mode()}
-              size="small"
-              color="inherit"
-            >
-              <HistoryEduOutlined />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('home.page.tooltips.manual')} arrow>
-            <IconButton onClick={toGithubDoc} size="small" color="inherit">
-              <HelpOutlineRounded />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title={t('home.page.tooltips.settings')} arrow>
-            <IconButton onClick={openSettings} size="small" color="inherit">
-              <SettingsOutlined />
-            </IconButton>
-          </Tooltip>
-        </Box>
+  const importByCode = useLockFn(async () => {
+    const value = code.trim()
+    if (!value) {
+      setStatus('请输入提取码')
+      return
+    }
+
+    setBusy(true)
+    setStatus('正在验证提取码...')
+    try {
+      const data = await verifyCode(value)
+      setStatus('正在导入订阅...')
+      await importProfile(data.subscription_url!, {
+        with_proxy: true,
+        allow_auto_update: true,
+        update_interval: 60,
+      })
+      localStorage.setItem(CODE_STORAGE_KEY, value)
+      await mutateProfiles()
+      await refreshAll()
+      setStatus(
+        `订阅已导入：${data.name || value}${
+          data.expires_at ? `，到期 ${data.expires_at}` : ''
+        }`,
+      )
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
+  const updateCurrentSubscription = useLockFn(async () => {
+    if (!current?.uid) {
+      setStatus('还没有可更新的订阅')
+      return
+    }
+    setBusy(true)
+    setStatus('正在更新订阅...')
+    try {
+      await updateProfile(current.uid, { with_proxy: true })
+      await mutateProfiles()
+      await refreshAll()
+      setStatus('订阅已更新')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
+  const togglePower = useLockFn(async () => {
+    setBusy(true)
+    try {
+      if (running) {
+        if (tunOn) await patchVerge({ enable_tun_mode: false })
+        if (systemProxyOn) await toggleSystemProxy(false)
+        setStatus('已停止代理')
+      } else if (isTunModeAvailable) {
+        await patchVerge({ enable_tun_mode: true })
+        setStatus('已启动 TUN 模式')
+      } else {
+        await toggleSystemProxy(true)
+        setStatus('已启动系统代理')
       }
-    >
-      <Grid container spacing={1.5} columns={{ xs: 6, sm: 6, md: 12 }}>
-        {criticalCards}
+      await refreshAll()
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
 
-        {nonCriticalCards}
-      </Grid>
+  const changeMode = useLockFn(async (_: unknown, value: string | null) => {
+    if (!value || value === mode) return
+    setBusy(true)
+    try {
+      await patchClashMode(value)
+      await refreshClashConfig()
+      setStatus(value === 'global' ? '已切换全局模式' : '已切换规则模式')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
 
-      {/* 首页设置弹窗 */}
-      <HomeSettingsDialog
-        key={dialogKey}
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        homeCards={effectiveHomeCards}
-        onSave={handleSaveSettings}
-      />
+  const changeNode = (value: string) => {
+    if (!primaryGroup || !value) return
+    changeProxy(primaryGroup.name, value, primaryGroup.now)
+  }
+
+  return (
+    <BasePage title="神仙云">
+      <Box
+        sx={{
+          minHeight: '100%',
+          display: 'grid',
+          placeItems: 'center',
+          px: 3,
+          py: 4,
+          background:
+            'radial-gradient(circle at 50% 18%, rgba(255,80,145,.16), transparent 34%), linear-gradient(180deg, rgba(16,18,28,.04), transparent)',
+        }}
+      >
+        <Stack spacing={3} sx={{ width: 'min(720px, 100%)' }}>
+          <Stack spacing={1} sx={{ alignItems: 'center' }}>
+            <Typography variant="h3" sx={{ fontWeight: 800 }}>
+              神仙云
+            </Typography>
+            <Typography color="text.secondary">
+              输入提取码，选择节点，一键开启。
+            </Typography>
+          </Stack>
+
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 4,
+              p: { xs: 3, md: 4 },
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Stack spacing={3} sx={{ alignItems: 'center' }}>
+              <Button
+                disabled={busy}
+                onClick={togglePower}
+                sx={{
+                  width: 220,
+                  height: 220,
+                  borderRadius: '50%',
+                  fontSize: 32,
+                  fontWeight: 800,
+                  color: 'white',
+                  bgcolor: running ? '#2ac77f' : '#f25b96',
+                  boxShadow: running
+                    ? '0 18px 42px rgba(42,199,127,.35)'
+                    : '0 18px 42px rgba(242,91,150,.35)',
+                  '&:hover': {
+                    bgcolor: running ? '#24b472' : '#e94f8b',
+                  },
+                }}
+              >
+                <Stack spacing={1} sx={{ alignItems: 'center' }}>
+                  <PowerSettingsNewRounded sx={{ fontSize: 56 }} />
+                  <span>{running ? '停止' : '启动'}</span>
+                </Stack>
+              </Button>
+
+              <Stack
+                direction="row"
+                spacing={1}
+                useFlexGap
+                sx={{ flexWrap: 'wrap' }}
+              >
+                <Chip
+                  icon={<BoltRounded />}
+                  color={running ? 'success' : 'default'}
+                  label={running ? '代理已开启' : '代理未开启'}
+                />
+                <Chip icon={<TuneRounded />} label={activeProfileName} />
+                <Chip
+                  icon={<LanguageRounded />}
+                  label={mode === 'global' ? '全局模式' : '规则模式'}
+                />
+              </Stack>
+
+              <ToggleButtonGroup
+                exclusive
+                value={mode}
+                onChange={changeMode}
+                disabled={busy}
+                fullWidth
+                sx={{ maxWidth: 420 }}
+              >
+                <ToggleButton value="rule">规则模式</ToggleButton>
+                <ToggleButton value="global">全局模式</ToggleButton>
+              </ToggleButtonGroup>
+
+              <FormControl fullWidth>
+                <InputLabel>选择节点</InputLabel>
+                <Select
+                  label="选择节点"
+                  value={selectedNode}
+                  onChange={(event) => changeNode(event.target.value)}
+                  disabled={!primaryGroup || nodes.length === 0}
+                >
+                  {nodes.map((node) => (
+                    <MenuItem key={node.name} value={node.name}>
+                      {nodeLabel(node)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                sx={{ width: '100%' }}
+              >
+                <TextField
+                  fullWidth
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  label="提取码"
+                  placeholder="输入网页后台生成的提取码"
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <KeyRounded sx={{ mr: 1, color: 'text.secondary' }} />
+                      ),
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  disabled={busy}
+                  onClick={importByCode}
+                  sx={{ minWidth: 140 }}
+                >
+                  导入订阅
+                </Button>
+              </Stack>
+
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                sx={{ width: '100%' }}
+              >
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<CloudSyncRounded />}
+                  disabled={busy}
+                  onClick={updateCurrentSubscription}
+                >
+                  更新订阅
+                </Button>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<ShoppingCartRounded />}
+                  onClick={() => openWebUrl(`${SUBSCRIPTION_BASE_URL}/pay`)}
+                >
+                  新购 / 续费
+                </Button>
+              </Stack>
+
+              <Alert severity={status.includes('失败') ? 'error' : 'info'} sx={{ width: '100%' }}>
+                {status}
+              </Alert>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Box>
     </BasePage>
-  )
-}
-
-// 增强版网络设置卡片组件
-const NetworkSettingsCard = () => {
-  const { t } = useTranslation()
-  return (
-    <EnhancedCard
-      title={t('home.page.cards.networkSettings')}
-      icon={<DnsOutlined />}
-      iconColor="primary"
-      action={null}
-    >
-      <ProxyTunCard />
-    </EnhancedCard>
-  )
-}
-
-// 增强版 Clash 模式卡片组件
-const ClashModeEnhancedCard = () => {
-  const { t } = useTranslation()
-  return (
-    <EnhancedCard
-      title={t('home.page.cards.proxyMode')}
-      icon={<RouterOutlined />}
-      iconColor="info"
-      action={null}
-    >
-      <ClashModeCard />
-    </EnhancedCard>
   )
 }
 

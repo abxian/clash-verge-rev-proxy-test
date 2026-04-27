@@ -276,7 +276,7 @@ const Layout = () => {
       <Paper
         square
         elevation={0}
-        className={`${OS} layout${navCollapsed ? ' layout--nav-collapsed' : ''}`}
+          className={`${OS} layout layout--simple${navCollapsed ? ' layout--nav-collapsed' : ''}`}
         style={{
           borderTopLeftRadius: '0px',
           borderTopRightRadius: '0px',

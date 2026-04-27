@@ -35,9 +35,14 @@ import { useSystemState } from '@/hooks/use-system-state'
 import { useVerge } from '@/hooks/use-verge'
 import { useAppData } from '@/providers/app-data-context'
 import {
+  getProfiles,
   importProfile,
   openWebUrl,
   patchClashMode,
+  patchProfilesConfig,
+  restartCore,
+  startCore,
+  stopCore,
   updateProfile,
 } from '@/services/cmds'
 
@@ -83,7 +88,7 @@ const HomePage = () => {
   const { proxies, clashConfig, refreshAll, refreshClashConfig, refreshProxy } =
     useAppData()
   const { indicator: systemProxyOn, toggleSystemProxy } = useSystemProxyState()
-  const { isTunModeAvailable } = useSystemState()
+  const { isTunModeAvailable, mutateSystemState } = useSystemState()
   const { changeProxy } = useProxySelection({
     onSuccess: () => {
       setStatus('节点已切换')
@@ -119,18 +124,34 @@ const HomePage = () => {
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
 
   const verifyCode = async (input: string): Promise<VerifyResponse> => {
-    const encoded = encodeURIComponent(input)
     const response = await tauriFetch(
-      `${SUBSCRIPTION_BASE_URL}/api/verify/${encoded}`,
-      {
-        method: 'GET',
-        connectTimeout: 8000,
-      },
+      `${SUBSCRIPTION_BASE_URL}/api/verify/${encodeURIComponent(input)}`,
+      { method: 'GET', connectTimeout: 8000 },
     )
     const data = (await response.json()) as VerifyResponse
     if (!response.ok || !data.ok || !data.subscription_url) {
       throw new Error(data.message || '提取码验证失败')
     }
+    return data
+  }
+
+  const activateCode = async (value: string) => {
+    const data = await verifyCode(value)
+    await importProfile(data.subscription_url!, {
+      with_proxy: true,
+      allow_auto_update: true,
+      update_interval: 60,
+    })
+
+    const latestProfiles = await getProfiles()
+    const newestProfile = latestProfiles.items?.at(-1)
+    if (newestProfile?.uid) {
+      await patchProfilesConfig({ ...latestProfiles, current: newestProfile.uid })
+    }
+
+    localStorage.setItem(CODE_STORAGE_KEY, value)
+    await mutateProfiles()
+    await refreshAll()
     return data
   }
 
@@ -144,16 +165,7 @@ const HomePage = () => {
     setBusy(true)
     setStatus('正在验证提取码...')
     try {
-      const data = await verifyCode(value)
-      setStatus('正在导入订阅...')
-      await importProfile(data.subscription_url!, {
-        with_proxy: true,
-        allow_auto_update: true,
-        update_interval: 60,
-      })
-      localStorage.setItem(CODE_STORAGE_KEY, value)
-      await mutateProfiles()
-      await refreshAll()
+      const data = await activateCode(value)
       setStatus(
         `订阅已导入：${data.name || value}${
           data.expires_at ? `，到期 ${data.expires_at}` : ''
@@ -191,9 +203,29 @@ const HomePage = () => {
       if (running) {
         if (tunOn) await patchVerge({ enable_tun_mode: false })
         if (systemProxyOn) await toggleSystemProxy(false)
+        await stopCore().catch(() => {})
         setStatus('已停止代理')
-      } else if (isTunModeAvailable) {
+        await refreshAll()
+        return
+      }
+
+      if (!current?.uid) {
+        const value = code.trim()
+        if (!value) {
+          setStatus('请先输入提取码并导入订阅')
+          return
+        }
+        setStatus('正在导入订阅...')
+        await activateCode(value)
+      }
+
+      setStatus('正在启动内核...')
+      await startCore().catch(() => restartCore())
+      await mutateSystemState()
+
+      if (isTunModeAvailable) {
         await patchVerge({ enable_tun_mode: true })
+        if (systemProxyOn) await toggleSystemProxy(false)
         setStatus('已启动 TUN 模式')
       } else {
         await toggleSystemProxy(true)
@@ -384,7 +416,14 @@ const HomePage = () => {
                 </Button>
               </Stack>
 
-              <Alert severity={status.includes('失败') ? 'error' : 'info'} sx={{ width: '100%' }}>
+              <Alert
+                severity={
+                  status.includes('失败') || status.includes('错误')
+                    ? 'error'
+                    : 'info'
+                }
+                sx={{ width: '100%' }}
+              >
                 {status}
               </Alert>
             </Stack>

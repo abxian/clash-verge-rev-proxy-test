@@ -264,3 +264,23 @@
     }
   }
 }
+
+.layout.layout--simple {
+  .layout-content__left {
+    display: none !important;
+  }
+
+  .layout-content__right {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .layout-content__right .the-bar {
+    display: none;
+  }
+
+  .layout-content__right .the-content {
+    top: 0 !important;
+    right: 0;
+  }
+}

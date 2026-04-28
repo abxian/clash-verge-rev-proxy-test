@@ -834,7 +834,6 @@ async fn create_tray_menu(
         lightweight_mode,
         open_dir,
         more,
-        quit,
         show_outbound_modes_inline,
     );
 
@@ -850,6 +849,9 @@ async fn create_tray_menu(
         }
         _ => {}
     }
+
+    menu_items.push(separator);
+    menu_items.push(quit);
 
     let menu = tauri::menu::MenuBuilder::new(app_handle).items(&menu_items).build()?;
     Ok(menu)

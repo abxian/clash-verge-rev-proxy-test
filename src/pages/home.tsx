@@ -28,7 +28,7 @@ import {
 } from '@mui/material'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { BasePage } from '@/components/base'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -47,19 +47,31 @@ import {
   restartCore,
   startCore,
   stopCore,
+  deleteProfile,
   updateProfile,
 } from '@/services/cmds'
 import delayManager from '@/services/delay'
 
 const SUBSCRIPTION_BASE_URL = 'https://sub.jc116.com'
 const CODE_STORAGE_KEY = 'shenxianyun.accessCode'
+const CODE_NAME_STORAGE_KEY = 'shenxianyun.accessName'
+const CODE_EXPIRES_STORAGE_KEY = 'shenxianyun.accessExpiresAt'
+const CODE_UPDATE_VERSION_STORAGE_KEY = 'shenxianyun.updateVersion'
 const DELAY_TIMEOUT = 5000
+const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
 
 type VerifyResponse = {
   ok?: boolean
   name?: string
   expires_at?: string
   subscription_url?: string
+  update_version?: number
+  message?: string
+}
+
+type UpdateStateResponse = {
+  ok?: boolean
+  update_version?: number
   message?: string
 }
 
@@ -134,10 +146,23 @@ const HomePage = () => {
   const [code, setCode] = useState(
     () => localStorage.getItem(CODE_STORAGE_KEY) || '',
   )
-  const [status, setStatus] = useState('输入提取码后导入订阅。')
+  const [savedCode, setSavedCode] = useState(
+    () => localStorage.getItem(CODE_STORAGE_KEY) || '',
+  )
+  const [expiresAt, setExpiresAt] = useState(
+    () => localStorage.getItem(CODE_EXPIRES_STORAGE_KEY) || '',
+  )
+  const [accessName, setAccessName] = useState(
+    () => localStorage.getItem(CODE_NAME_STORAGE_KEY) || '',
+  )
+  const [status, setStatus] = useState(
+    savedCode ? '提取码已保存，会自动检查订阅更新。' : '输入提取码后自动订阅。',
+  )
   const [busy, setBusy] = useState(false)
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  const autoImportCodeRef = useRef('')
 
   const primaryGroup = useMemo(
     () => pickPrimaryGroup((proxies?.groups || []) as IProxyGroupItem[]),
@@ -159,6 +184,13 @@ const HomePage = () => {
   const actualRunning = tunOn || systemProxyOn || systemProxyConfigOn
   const running = actualRunning
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
+  const currentCode = savedCode || code.trim()
+  const isSwitchingCode = Boolean(
+    savedCode && code.trim() && code.trim() !== savedCode,
+  )
+  const codeExpired = Boolean(
+    expiresAt && nowMs > Date.parse(expiresAt.replace(' ', 'T')),
+  )
   const tunLabel = tunOn
     ? 'TUN 虚拟网卡已开启'
     : isTunModeAvailable
@@ -168,7 +200,14 @@ const HomePage = () => {
   const verifyCode = async (input: string): Promise<VerifyResponse> => {
     const response = await tauriFetch(
       `${SUBSCRIPTION_BASE_URL}/api/verify/${encodeURIComponent(input)}`,
-      { method: 'GET', connectTimeout: 8000 },
+      {
+        method: 'GET',
+        connectTimeout: 8000,
+        headers: {
+          'User-Agent': CLIENT_UA,
+          'X-Client-Type': 'shenxianyun-windows',
+        },
+      },
     )
     const data = (await response.json()) as VerifyResponse
     if (!response.ok || !data.ok || !data.subscription_url) {
@@ -177,27 +216,77 @@ const HomePage = () => {
     return data
   }
 
-  const activateCode = async (value: string) => {
-    const data = await verifyCode(value)
-    await importProfile(data.subscription_url!, {
-      with_proxy: true,
-      allow_auto_update: true,
-      update_interval: 60,
-    })
-
-    const latestProfiles = await getProfiles()
-    const newestProfile = latestProfiles.items?.at(-1)
-    if (newestProfile?.uid) {
-      await patchProfilesConfig({
-        ...latestProfiles,
-        current: newestProfile.uid,
-      })
+  const updateState = async (input: string): Promise<UpdateStateResponse> => {
+    const response = await tauriFetch(
+      `${SUBSCRIPTION_BASE_URL}/api/update-state/${encodeURIComponent(input)}`,
+      {
+        method: 'GET',
+        connectTimeout: 8000,
+        headers: {
+          'User-Agent': CLIENT_UA,
+          'X-Client-Type': 'shenxianyun-windows',
+        },
+      },
+    )
+    const data = (await response.json()) as UpdateStateResponse
+    if (!response.ok || !data.ok) {
+      throw new Error(data.message || '提取码已失效或过期')
     }
-
-    localStorage.setItem(CODE_STORAGE_KEY, value)
-    await mutateProfiles()
-    await refreshAll()
     return data
+  }
+
+  const activateCode = async (value: string, retryCount = 3) => {
+    let lastError: unknown
+    for (let attempt = 1; attempt <= retryCount; attempt += 1) {
+      try {
+        const data = await verifyCode(value)
+
+        if (savedCode && savedCode !== value && current?.uid) {
+          await stopCore().catch(() => {})
+          if (tunOn) await patchVerge({ enable_tun_mode: false })
+          if (systemProxyOn || systemProxyConfigOn) {
+            await toggleSystemProxy(false)
+          }
+          await deleteProfile(current.uid).catch(() => {})
+        }
+
+        await importProfile(data.subscription_url!, {
+          with_proxy: true,
+          allow_auto_update: true,
+          update_interval: 60,
+        })
+
+        const latestProfiles = await getProfiles()
+        const newestProfile = latestProfiles.items?.at(-1)
+        if (newestProfile?.uid) {
+          await patchProfilesConfig({
+            ...latestProfiles,
+            current: newestProfile.uid,
+          })
+        }
+
+        localStorage.setItem(CODE_STORAGE_KEY, value)
+        localStorage.setItem(CODE_NAME_STORAGE_KEY, data.name || value)
+        localStorage.setItem(CODE_EXPIRES_STORAGE_KEY, data.expires_at || '')
+        localStorage.setItem(
+          CODE_UPDATE_VERSION_STORAGE_KEY,
+          String(data.update_version || 0),
+        )
+        setSavedCode(value)
+        setAccessName(data.name || value)
+        setExpiresAt(data.expires_at || '')
+        await mutateProfiles()
+        await refreshAll()
+        return data
+      } catch (error) {
+        lastError = error
+        if (attempt < retryCount) {
+          setStatus(`订阅失败，正在重试 ${attempt}/${retryCount - 1}...`)
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+        }
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError))
   }
 
   const importByCode = useLockFn(async () => {
@@ -208,11 +297,11 @@ const HomePage = () => {
     }
 
     setBusy(true)
-    setStatus('正在验证提取码...')
+    setStatus(isSwitchingCode ? '正在切换提取码...' : '正在验证提取码...')
     try {
       const data = await activateCode(value)
       setStatus(
-        `订阅已导入：${data.name || value}${
+        `${isSwitchingCode ? '提取码已切换' : '订阅已导入'}：${data.name || value}${
           data.expires_at ? `，到期 ${data.expires_at}` : ''
         }`,
       )
@@ -222,6 +311,80 @@ const HomePage = () => {
       setBusy(false)
     }
   })
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const value = code.trim()
+    if (!value || value === savedCode || busy || running) return
+    if (value.length < 2 || autoImportCodeRef.current === value) return
+
+    const timer = window.setTimeout(() => {
+      autoImportCodeRef.current = value
+      importByCode().catch(() => {
+        autoImportCodeRef.current = ''
+      })
+    }, 1200)
+
+    return () => window.clearTimeout(timer)
+  }, [busy, code, importByCode, running, savedCode])
+
+  useEffect(() => {
+    if (!savedCode) return
+
+    const checkUpdate = async () => {
+      try {
+        const state = await updateState(savedCode)
+        const remoteVersion = Number(state.update_version || 0)
+        const localVersion = Number(
+          localStorage.getItem(CODE_UPDATE_VERSION_STORAGE_KEY) || 0,
+        )
+        if (remoteVersion > localVersion && current?.uid) {
+          setStatus('检测到后台推送，正在更新订阅...')
+          await updateProfile(current.uid, { with_proxy: true })
+          localStorage.setItem(
+            CODE_UPDATE_VERSION_STORAGE_KEY,
+            String(remoteVersion),
+          )
+          await mutateProfiles()
+          await refreshAll()
+          setStatus('后台推送订阅已更新')
+        }
+      } catch (error) {
+        if (running) {
+          if (tunOn) await patchVerge({ enable_tun_mode: false })
+          if (systemProxyOn || systemProxyConfigOn) {
+            await toggleSystemProxy(false)
+          }
+          await stopCore().catch(() => {})
+          await invalidateProxyState()
+        }
+        setStatus(error instanceof Error ? error.message : String(error))
+      }
+    }
+
+    checkUpdate().catch(() => {})
+    const timer = window.setInterval(() => {
+      checkUpdate().catch(() => {})
+    }, 60_000)
+
+    return () => window.clearInterval(timer)
+  }, [
+    current?.uid,
+    invalidateProxyState,
+    mutateProfiles,
+    patchVerge,
+    refreshAll,
+    running,
+    savedCode,
+    systemProxyConfigOn,
+    systemProxyOn,
+    toggleSystemProxy,
+    tunOn,
+  ])
 
   const updateCurrentSubscription = useLockFn(async () => {
     if (!current?.uid) {
@@ -267,6 +430,20 @@ const HomePage = () => {
         }
         setStatus('正在导入订阅...')
         await activateCode(value)
+      }
+
+      if (!currentCode) {
+        setStatus('请先输入提取码')
+        return
+      }
+
+      setStatus('正在检查提取码有效期...')
+      const state = await updateState(currentCode)
+      if (state.update_version) {
+        localStorage.setItem(
+          CODE_UPDATE_VERSION_STORAGE_KEY,
+          String(state.update_version),
+        )
       }
 
       setStatus('正在启动内核...')
@@ -404,7 +581,17 @@ const HomePage = () => {
                   color={running ? 'success' : 'default'}
                   label={running ? '代理已开启' : '代理未开启'}
                 />
-                <Chip icon={<TuneRounded />} label={activeProfileName} />
+                <Chip
+                  icon={<TuneRounded />}
+                  label={accessName || activeProfileName}
+                />
+                {expiresAt && (
+                  <Chip
+                    color={codeExpired ? 'error' : 'default'}
+                    variant="outlined"
+                    label={codeExpired ? '提取码已过期' : `到期 ${expiresAt}`}
+                  />
+                )}
                 <Chip
                   icon={<LanguageRounded />}
                   label={mode === 'global' ? '全局模式' : '规则模式'}
@@ -541,7 +728,11 @@ const HomePage = () => {
                   onClick={importByCode}
                   sx={{ minWidth: 140 }}
                 >
-                  导入订阅
+                  {isSwitchingCode
+                    ? '切换提取码'
+                    : savedCode
+                      ? '重新订阅'
+                      : '导入订阅'}
                 </Button>
               </Stack>
 

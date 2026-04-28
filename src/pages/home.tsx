@@ -2,6 +2,7 @@ import {
   BoltRounded,
   CloudSyncRounded,
   KeyRounded,
+  LanRounded,
   LanguageRounded,
   PowerSettingsNewRounded,
   ShoppingCartRounded,
@@ -26,7 +27,7 @@ import {
 } from '@mui/material'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { BasePage } from '@/components/base'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -80,7 +81,9 @@ const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
 }
 
 const getNodeDelay = (proxy: IProxyItem, groupName = '') => {
-  const testedDelay = groupName ? delayManager.getDelayFix(proxy, groupName) : -1
+  const testedDelay = groupName
+    ? delayManager.getDelayFix(proxy, groupName)
+    : -1
   if (testedDelay >= 0) return testedDelay
   return proxy.history?.at(-1)?.delay ?? -1
 }
@@ -111,7 +114,13 @@ const HomePage = () => {
     toggleSystemProxy,
     invalidateProxyState,
   } = useSystemProxyState()
-  const { isTunModeAvailable, mutateSystemState } = useSystemState()
+  const {
+    isTunModeAvailable,
+    runningMode,
+    isAdminMode,
+    isServiceOk,
+    mutateSystemState,
+  } = useSystemState()
   const { changeProxy } = useProxySelection({
     onSuccess: () => {
       setStatus('节点已切换')
@@ -120,44 +129,39 @@ const HomePage = () => {
     onError: () => setStatus('节点切换失败'),
   })
 
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState(
+    () => localStorage.getItem(CODE_STORAGE_KEY) || '',
+  )
   const [status, setStatus] = useState('输入提取码后导入订阅。')
   const [busy, setBusy] = useState(false)
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
-  const [runningOverride, setRunningOverride] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    setCode(localStorage.getItem(CODE_STORAGE_KEY) || '')
-  }, [])
 
   const primaryGroup = useMemo(
     () => pickPrimaryGroup((proxies?.groups || []) as IProxyGroupItem[]),
     [proxies?.groups],
   )
-  const nodes = useMemo(
-    () =>
-      (primaryGroup?.all || [])
-        .filter((proxy) => !['DIRECT', 'REJECT'].includes(proxy.name))
-        .toSorted(
-          (a, b) =>
-            delayRank(a, primaryGroup?.name) - delayRank(b, primaryGroup?.name),
-        ),
-    [primaryGroup, delaySortTick],
-  )
+  const nodes = useMemo(() => {
+    void delaySortTick
+    return (primaryGroup?.all || [])
+      .filter((proxy) => !['DIRECT', 'REJECT'].includes(proxy.name))
+      .toSorted(
+        (a, b) =>
+          delayRank(a, primaryGroup?.name) - delayRank(b, primaryGroup?.name),
+      )
+  }, [primaryGroup, delaySortTick])
 
   const selectedNode = primaryGroup?.now || ''
   const mode = (clashConfig?.mode || 'rule').toLowerCase()
   const tunOn = verge?.enable_tun_mode || false
   const actualRunning = tunOn || systemProxyOn || systemProxyConfigOn
-  const running = runningOverride ?? actualRunning
+  const running = actualRunning
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
-
-  useEffect(() => {
-    if (runningOverride !== null && actualRunning === runningOverride) {
-      setRunningOverride(null)
-    }
-  }, [actualRunning, runningOverride])
+  const tunLabel = tunOn
+    ? 'TUN 虚拟网卡已开启'
+    : isTunModeAvailable
+      ? 'TUN 虚拟网卡可用'
+      : 'TUN 需管理员/服务'
 
   const verifyCode = async (input: string): Promise<VerifyResponse> => {
     const response = await tauriFetch(
@@ -182,7 +186,10 @@ const HomePage = () => {
     const latestProfiles = await getProfiles()
     const newestProfile = latestProfiles.items?.at(-1)
     if (newestProfile?.uid) {
-      await patchProfilesConfig({ ...latestProfiles, current: newestProfile.uid })
+      await patchProfilesConfig({
+        ...latestProfiles,
+        current: newestProfile.uid,
+      })
     }
 
     localStorage.setItem(CODE_STORAGE_KEY, value)
@@ -246,7 +253,6 @@ const HomePage = () => {
         await stopCore().catch(() => {})
         await invalidateProxyState()
         await refreshAll()
-        setRunningOverride(false)
         setStatus('已停止代理')
         return
       }
@@ -268,11 +274,9 @@ const HomePage = () => {
       if (isTunModeAvailable) {
         await patchVerge({ enable_tun_mode: true })
         if (systemProxyOn || systemProxyConfigOn) await toggleSystemProxy(false)
-        setRunningOverride(true)
         setStatus('已启动 TUN 模式，按钮可点击停止')
       } else {
         await toggleSystemProxy(true)
-        setRunningOverride(true)
         setStatus('已启动系统代理，按钮可点击停止')
       }
       await invalidateProxyState()
@@ -403,7 +407,42 @@ const HomePage = () => {
                   icon={<LanguageRounded />}
                   label={mode === 'global' ? '全局模式' : '规则模式'}
                 />
+                <Chip
+                  icon={<LanRounded />}
+                  color={
+                    tunOn
+                      ? 'success'
+                      : isTunModeAvailable
+                        ? 'primary'
+                        : 'warning'
+                  }
+                  variant={tunOn ? 'filled' : 'outlined'}
+                  label={tunLabel}
+                />
+                <Chip
+                  icon={<BoltRounded />}
+                  color={
+                    systemProxyOn || systemProxyConfigOn ? 'success' : 'default'
+                  }
+                  variant={
+                    systemProxyOn || systemProxyConfigOn ? 'filled' : 'outlined'
+                  }
+                  label={
+                    systemProxyOn || systemProxyConfigOn
+                      ? '系统代理已开启'
+                      : '系统代理未开启'
+                  }
+                />
               </Stack>
+
+              <Alert
+                severity={isTunModeAvailable ? 'success' : 'warning'}
+                sx={{ width: '100%' }}
+              >
+                {isTunModeAvailable
+                  ? `TUN 虚拟网卡可用：${runningMode} 模式，启动时会优先使用 TUN。`
+                  : `TUN 虚拟网卡暂不可用：管理员=${isAdminMode ? '是' : '否'}，服务=${isServiceOk ? '正常' : '未安装/未启动'}。会自动改用系统代理。`}
+              </Alert>
 
               <ToggleButtonGroup
                 exclusive
@@ -417,7 +456,11 @@ const HomePage = () => {
                 <ToggleButton value="global">全局模式</ToggleButton>
               </ToggleButtonGroup>
 
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: '100%' }}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                sx={{ width: '100%' }}
+              >
                 <FormControl fullWidth>
                   <InputLabel>选择节点</InputLabel>
                   <Select

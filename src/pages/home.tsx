@@ -1,5 +1,6 @@
 import {
   BoltRounded,
+  BuildRounded,
   CloudSyncRounded,
   KeyRounded,
   LanRounded,
@@ -39,6 +40,7 @@ import { useAppData } from '@/providers/app-data-context'
 import {
   getProfiles,
   importProfile,
+  installService,
   openWebUrl,
   patchClashMode,
   patchProfilesConfig,
@@ -443,6 +445,33 @@ const HomePage = () => {
                   ? `TUN 虚拟网卡可用：${runningMode} 模式，启动时会优先使用 TUN。`
                   : `TUN 虚拟网卡暂不可用：管理员=${isAdminMode ? '是' : '否'}，服务=${isServiceOk ? '正常' : '未安装/未启动'}。会自动改用系统代理。`}
               </Alert>
+
+              {!isTunModeAvailable && (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<BuildRounded />}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true)
+                    setStatus('正在安装 TUN 服务，会弹出管理员授权...')
+                    try {
+                      await installService()
+                      await restartCore()
+                      await mutateSystemState()
+                      setStatus('TUN 服务已安装，可以重新启动代理')
+                    } catch (error) {
+                      setStatus(
+                        error instanceof Error ? error.message : String(error),
+                      )
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  安装 TUN 虚拟网卡服务
+                </Button>
+              )}
 
               <ToggleButtonGroup
                 exclusive

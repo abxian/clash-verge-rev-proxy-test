@@ -137,7 +137,7 @@ impl Sysopt {
             let (sys, auto) = &mut *self.inner_proxy.write();
             sys.host = proxy_host.clone().into();
             sys.port = port;
-            sys.bypass = bypass.into();
+            sys.bypass = bypass.clone().into();
             auto.url = format!("http://{proxy_host}:{pac_port}/commands/pac");
 
             // `enable_system_proxy` is the master switch.
@@ -172,6 +172,8 @@ impl Sysopt {
         tokio::task::spawn_blocking(move || -> Result<()> {
             sys.set_system_proxy()?;
             auto.set_auto_proxy()?;
+            #[cfg(target_os = "windows")]
+            apply_windows_proxy_fallback(sys_enable, pac_enable, &proxy_host, port, &bypass, &auto.url)?;
             Ok(())
         })
         .await??;
@@ -206,10 +208,43 @@ impl Sysopt {
         tokio::task::spawn_blocking(move || -> Result<()> {
             sys.set_system_proxy()?;
             auto.set_auto_proxy()?;
+            #[cfg(target_os = "windows")]
+            apply_windows_proxy_fallback(false, false, "127.0.0.1", 0, "", "")?;
             Ok(())
         })
         .await??;
 
         Ok(())
     }
+}
+
+#[cfg(target_os = "windows")]
+fn apply_windows_proxy_fallback(
+    sys_enable: bool,
+    pac_enable: bool,
+    proxy_host: &str,
+    port: u16,
+    bypass: &str,
+    pac_url: &str,
+) -> Result<()> {
+    use winreg::{RegKey, enums::HKEY_CURRENT_USER};
+
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let (settings, _) = hkcu.create_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings")?;
+
+    if sys_enable && !pac_enable {
+        settings.set_value("ProxyEnable", &1u32)?;
+        settings.set_value("ProxyServer", &format!("{proxy_host}:{port}"))?;
+        settings.set_value("ProxyOverride", &bypass)?;
+        let _ = settings.delete_value("AutoConfigURL");
+    } else if pac_enable {
+        settings.set_value("ProxyEnable", &0u32)?;
+        settings.set_value("AutoConfigURL", &pac_url)?;
+        settings.set_value("ProxyOverride", &bypass)?;
+    } else {
+        settings.set_value("ProxyEnable", &0u32)?;
+        let _ = settings.delete_value("AutoConfigURL");
+    }
+
+    Ok(())
 }

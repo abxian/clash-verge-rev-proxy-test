@@ -272,8 +272,21 @@ const HomePage = () => {
         const latestProfiles = await getProfiles()
         const newestProfile = latestProfiles.items?.at(-1)
         if (newestProfile?.uid) {
+          const oldProfiles =
+            latestProfiles.items?.filter(
+              (item) => item.uid !== newestProfile.uid,
+            ) || []
+          await Promise.all(
+            oldProfiles.map((item) =>
+              item.uid
+                ? deleteProfile(item.uid).catch(() => {})
+                : Promise.resolve(),
+            ),
+          )
+
+          const singleProfileConfig = await getProfiles()
           await patchProfilesConfig({
-            ...latestProfiles,
+            ...singleProfileConfig,
             current: newestProfile.uid,
           })
         }
@@ -695,6 +708,34 @@ const HomePage = () => {
                   }}
                 >
                   安装 TUN 虚拟网卡服务
+                </Button>
+              )}
+
+              {tunOn && (
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<LanRounded />}
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true)
+                    setStatus('Closing TUN...')
+                    try {
+                      await patchVerge({ enable_tun_mode: false })
+                      await mutateSystemState()
+                      await refreshAll()
+                      setStatus('TUN virtual adapter is off')
+                    } catch (error) {
+                      setStatus(
+                        error instanceof Error ? error.message : String(error),
+                      )
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  关闭 TUN 虚拟网卡
                 </Button>
               )}
 

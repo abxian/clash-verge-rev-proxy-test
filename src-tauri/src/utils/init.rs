@@ -369,13 +369,20 @@ pub fn init_scheme() -> Result<()> {
     let app_exe = app_exe.to_string_lossy().into_owned();
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let (clash, _) = hkcu.create_subkey("Software\\Classes\\Clash")?;
-    clash.set_value("", &"Clash Verge")?;
-    clash.set_value("URL Protocol", &"Clash Verge URL Scheme Protocol")?;
-    let (default_icon, _) = hkcu.create_subkey("Software\\Classes\\Clash\\DefaultIcon")?;
-    default_icon.set_value("", &app_exe)?;
-    let (command, _) = hkcu.create_subkey("Software\\Classes\\Clash\\Shell\\Open\\Command")?;
-    command.set_value("", &format!("{app_exe} \"%1\""))?;
+    for (scheme, name) in [
+        ("Clash", "Clash Verge"),
+        ("clash-verge", "Clash Verge"),
+        ("shenxianyun", "Shenxianyun"),
+    ] {
+        let base = format!("Software\\Classes\\{scheme}");
+        let (scheme_key, _) = hkcu.create_subkey(&base)?;
+        scheme_key.set_value("", &name)?;
+        scheme_key.set_value("URL Protocol", &format!("{name} URL Scheme Protocol"))?;
+        let (default_icon, _) = hkcu.create_subkey(format!("{base}\\DefaultIcon"))?;
+        default_icon.set_value("", &app_exe)?;
+        let (command, _) = hkcu.create_subkey(format!("{base}\\Shell\\Open\\Command"))?;
+        command.set_value("", &format!("{app_exe} \"%1\""))?;
+    }
 
     Ok(())
 }
@@ -407,7 +414,7 @@ pub const fn init_scheme() -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-const DEEP_LINK_SCHEMES: &[&str] = &["clash", "clash-verge"];
+const DEEP_LINK_SCHEMES: &[&str] = &["clash", "clash-verge", "shenxianyun"];
 
 pub async fn startup_script() -> Result<()> {
     let app_handle = handle::Handle::app_handle();

@@ -42,7 +42,7 @@
     },
     "deep-link": {
       "desktop": {
-        "schemes": ["clash", "clash-verge"]
+        "schemes": ["clash", "clash-verge", "shenxianyun"]
       }
     }
   },

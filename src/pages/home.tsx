@@ -75,6 +75,21 @@ type UpdateStateResponse = {
   message?: string
 }
 
+class AccessCodeStateError extends Error {
+  constructor(
+    message: string,
+    readonly serverRejected = false,
+  ) {
+    super(message)
+  }
+}
+
+const parseExpireTime = (value: string) => {
+  if (!value) return Number.POSITIVE_INFINITY
+  const time = Date.parse(value.replace(' ', 'T'))
+  return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
+}
+
 const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
   const selectable = groups.filter((group) => {
     const type = String(group.type || '').toLowerCase()
@@ -188,9 +203,7 @@ const HomePage = () => {
   const isSwitchingCode = Boolean(
     savedCode && code.trim() && code.trim() !== savedCode,
   )
-  const codeExpired = Boolean(
-    expiresAt && nowMs > Date.parse(expiresAt.replace(' ', 'T')),
-  )
+  const codeExpired = Boolean(expiresAt && nowMs > parseExpireTime(expiresAt))
   const tunLabel = tunOn
     ? 'TUN 虚拟网卡已开启'
     : isTunModeAvailable
@@ -230,7 +243,7 @@ const HomePage = () => {
     )
     const data = (await response.json()) as UpdateStateResponse
     if (!response.ok || !data.ok) {
-      throw new Error(data.message || '提取码已失效或过期')
+      throw new AccessCodeStateError(data.message || '提取码已失效或过期', true)
     }
     return data
   }
@@ -354,7 +367,13 @@ const HomePage = () => {
           setStatus('后台推送订阅已更新')
         }
       } catch (error) {
-        if (running) {
+        const blockedByServer =
+          error instanceof AccessCodeStateError && error.serverRejected
+        const blockedByLocalExpire = Boolean(
+          expiresAt && Date.now() > parseExpireTime(expiresAt),
+        )
+
+        if (running && (blockedByServer || blockedByLocalExpire)) {
           if (tunOn) await patchVerge({ enable_tun_mode: false })
           if (systemProxyOn || systemProxyConfigOn) {
             await toggleSystemProxy(false)
@@ -362,7 +381,12 @@ const HomePage = () => {
           await stopCore().catch(() => {})
           await invalidateProxyState()
         }
-        setStatus(error instanceof Error ? error.message : String(error))
+
+        if (blockedByServer || blockedByLocalExpire) {
+          setStatus(error instanceof Error ? error.message : String(error))
+        } else {
+          setStatus('后台暂时连接失败，已按本地提取码有效期继续使用')
+        }
       }
     }
 
@@ -374,6 +398,7 @@ const HomePage = () => {
     return () => window.clearInterval(timer)
   }, [
     current?.uid,
+    expiresAt,
     invalidateProxyState,
     mutateProfiles,
     patchVerge,
@@ -438,12 +463,25 @@ const HomePage = () => {
       }
 
       setStatus('正在检查提取码有效期...')
-      const state = await updateState(currentCode)
-      if (state.update_version) {
-        localStorage.setItem(
-          CODE_UPDATE_VERSION_STORAGE_KEY,
-          String(state.update_version),
-        )
+      if (expiresAt && Date.now() > parseExpireTime(expiresAt)) {
+        setStatus('提取码已过期，不能开启代理')
+        return
+      }
+
+      try {
+        const state = await updateState(currentCode)
+        if (state.update_version) {
+          localStorage.setItem(
+            CODE_UPDATE_VERSION_STORAGE_KEY,
+            String(state.update_version),
+          )
+        }
+      } catch (error) {
+        if (error instanceof AccessCodeStateError && error.serverRejected) {
+          setStatus(error.message)
+          return
+        }
+        setStatus('后台暂时连接失败，按本地提取码有效期继续启动...')
       }
 
       setStatus('正在启动内核...')

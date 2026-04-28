@@ -93,6 +93,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxslt1.1 libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
+      - name: Install ARM OpenSSL (macOS only)
+        if: matrix.target == 'aarch64-apple-darwin' && github.event.inputs[matrix.input] == 'true'
+        run: |
+          brew install openssl@3
+          echo "OPENSSL_DIR=$(brew --prefix openssl@3)" >> $GITHUB_ENV
+          echo "OPENSSL_INCLUDE_DIR=$(brew --prefix openssl@3)/include" >> $GITHUB_ENV
+          echo "OPENSSL_LIB_DIR=$(brew --prefix openssl@3)/lib" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix openssl@3)/lib/pkgconfig" >> $GITHUB_ENV
+
       - uses: pnpm/action-setup@v6
         name: Install pnpm
         if: github.event.inputs[matrix.input] == 'true'

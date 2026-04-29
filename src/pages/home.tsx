@@ -258,13 +258,18 @@ const HomePage = () => {
   )
   const codeExpired = Boolean(expiresAt && nowMs > parseExpireTime(expiresAt))
   const verifyCode = async (input: string): Promise<ValidVerifyResponse> => {
+    const params = new URLSearchParams({
+      import: '1',
+      client_id: getClientId(),
+    })
     const response = await tauriFetch(
-      `${SUBSCRIPTION_BASE_URL}/api/verify/${encodeURIComponent(input)}`,
+      `${SUBSCRIPTION_BASE_URL}/api/verify/${encodeURIComponent(input)}?${params.toString()}`,
       {
         method: 'GET',
         connectTimeout: 8000,
         headers: {
           'User-Agent': CLIENT_UA,
+          'X-Client-Id': getClientId(),
           'X-Client-Type': 'shenxianyun-windows',
         },
       },

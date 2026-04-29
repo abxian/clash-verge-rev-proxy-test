@@ -195,6 +195,7 @@ impl Config {
         let (mut config, exists_keys, logs) = enhance::enhance().await?;
 
         sanitize_tunnels_proxy(&mut config);
+        ensure_backend_direct_rules(&mut config);
 
         Self::runtime().await.edit_draft(|d| {
             *d = IRuntime {
@@ -290,6 +291,26 @@ fn sanitize_tunnels_proxy(config: &mut Mapping) {
 
         if !valid.contains(proxy_name) {
             tunnel.remove("proxy");
+        }
+    }
+}
+
+fn ensure_backend_direct_rules(config: &mut Mapping) {
+    let rules_key = Value::from("rules");
+    let direct_rules = [
+        Value::from("DOMAIN,sub.jc116.com,DIRECT"),
+        Value::from("DOMAIN-SUFFIX,jc116.com,DIRECT"),
+    ];
+
+    let rules = config.entry(rules_key).or_insert_with(|| Value::Sequence(Vec::new()));
+
+    let Some(sequence) = rules.as_sequence_mut() else {
+        return;
+    };
+
+    for rule in direct_rules.iter().rev() {
+        if !sequence.iter().any(|item| item == rule) {
+            sequence.insert(0, rule.clone());
         }
     }
 }

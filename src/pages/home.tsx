@@ -28,7 +28,7 @@ import {
 } from '@mui/material'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { BasePage } from '@/components/base'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -57,8 +57,17 @@ const CODE_STORAGE_KEY = 'shenxianyun.accessCode'
 const CODE_NAME_STORAGE_KEY = 'shenxianyun.accessName'
 const CODE_EXPIRES_STORAGE_KEY = 'shenxianyun.accessExpiresAt'
 const CODE_UPDATE_VERSION_STORAGE_KEY = 'shenxianyun.updateVersion'
+const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
 const DELAY_TIMEOUT = 5000
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
+
+const getClientId = () => {
+  const saved = localStorage.getItem(CLIENT_ID_STORAGE_KEY)
+  if (saved) return saved
+  const generated = crypto.randomUUID()
+  localStorage.setItem(CLIENT_ID_STORAGE_KEY, generated)
+  return generated
+}
 
 type VerifyResponse = {
   ok?: boolean
@@ -248,6 +257,33 @@ const HomePage = () => {
     return data
   }
 
+  const sendClientPresence = useCallback(
+    async (online: boolean) => {
+      const value = savedCode || code.trim()
+      if (!value) return
+      const endpoint = online ? 'heartbeat' : 'offline'
+      const params = new URLSearchParams({
+        client_id: getClientId(),
+        platform: 'Windows电脑',
+        app_name: '神仙云桌面端',
+        app_version: '2.4.8',
+        device_name: navigator.userAgent,
+      })
+      await tauriFetch(
+        `${SUBSCRIPTION_BASE_URL}/api/client/${endpoint}/${encodeURIComponent(value)}?${params.toString()}`,
+        {
+          method: 'GET',
+          connectTimeout: 5000,
+          headers: {
+            'User-Agent': CLIENT_UA,
+            'X-Client-Type': 'shenxianyun-windows',
+          },
+        },
+      ).catch(() => undefined)
+    },
+    [code, savedCode],
+  )
+
   const activateCode = async (value: string, retryCount = 3) => {
     let lastError: unknown
     for (let attempt = 1; attempt <= retryCount; attempt += 1) {
@@ -342,6 +378,18 @@ const HomePage = () => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!running || !savedCode) return
+    sendClientPresence(true).catch(() => undefined)
+    const timer = window.setInterval(() => {
+      sendClientPresence(true).catch(() => undefined)
+    }, 30_000)
+    return () => {
+      window.clearInterval(timer)
+      sendClientPresence(false).catch(() => undefined)
+    }
+  }, [running, savedCode, sendClientPresence])
 
   useEffect(() => {
     const value = code.trim()
@@ -456,6 +504,7 @@ const HomePage = () => {
         await stopCore().catch(() => {})
         await invalidateProxyState()
         await refreshAll()
+        await sendClientPresence(false)
         setStatus('已停止代理')
         return
       }
@@ -511,6 +560,7 @@ const HomePage = () => {
       }
       await invalidateProxyState()
       await refreshAll()
+      await sendClientPresence(true)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error))
     } finally {

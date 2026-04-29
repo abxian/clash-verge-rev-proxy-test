@@ -8,7 +8,6 @@ import {
   PowerSettingsNewRounded,
   ShoppingCartRounded,
   SpeedRounded,
-  TuneRounded,
 } from '@mui/icons-material'
 import {
   Alert,
@@ -607,189 +606,178 @@ const HomePage = () => {
           minHeight: '100%',
           display: 'grid',
           placeItems: 'center',
-          px: 3,
-          py: 4,
+          px: 2.5,
+          py: 2.5,
           background:
-            'radial-gradient(circle at 50% 8%, rgba(242,91,150,.18), transparent 32%), radial-gradient(circle at 80% 45%, rgba(69,228,207,.08), transparent 28%)',
+            'radial-gradient(circle at 18% 12%, rgba(69,228,207,.13), transparent 30%), radial-gradient(circle at 74% 8%, rgba(255,92,152,.18), transparent 32%), linear-gradient(135deg, rgba(10,12,18,.18), rgba(18,20,28,.04))',
         }}
       >
-        <Stack spacing={2.5} sx={{ width: 'min(760px, 100%)' }}>
-          <Stack spacing={0.8} sx={{ alignItems: 'center' }}>
-            <Typography variant="h3" sx={{ fontWeight: 900, letterSpacing: 0 }}>
-              神仙云
-            </Typography>
-            <Typography color="text.secondary">
-              输入提取码，选择节点，一键连接。
-            </Typography>
+        <Stack spacing={1.5} sx={{ width: 'min(900px, 100%)' }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            sx={{
+              alignItems: { xs: 'center', sm: 'flex-end' },
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 900, letterSpacing: 0 }}
+              >
+                神仙云
+              </Typography>
+              <Typography color="text.secondary" sx={{ fontSize: 14 }}>
+                提取码订阅 · 节点选择 · 一键连接
+              </Typography>
+            </Box>
+            <Stack
+              direction="row"
+              spacing={1}
+              useFlexGap
+              sx={{ flexWrap: 'wrap' }}
+            >
+              <Chip
+                size="small"
+                icon={<BoltRounded />}
+                color={running ? 'success' : 'default'}
+                label={running ? '在线' : '离线'}
+              />
+              <Chip
+                size="small"
+                icon={<LanguageRounded />}
+                label={mode === 'global' ? '全局' : '规则'}
+              />
+              <Chip
+                size="small"
+                icon={<LanRounded />}
+                color={tunOn ? 'success' : 'default'}
+                variant={tunOn ? 'filled' : 'outlined'}
+                label={tunOn ? 'TUN' : '系统代理'}
+              />
+            </Stack>
           </Stack>
 
           <Paper
             elevation={0}
             sx={{
-              borderRadius: '28px',
-              p: { xs: 2.5, md: 3.5 },
-              border: '1px solid rgba(255,255,255,.08)',
-              bgcolor: 'rgba(22,24,32,.82)',
-              boxShadow: '0 24px 80px rgba(0,0,0,.22)',
+              borderRadius: '24px',
+              p: { xs: 2, md: 2.5 },
+              border: '1px solid rgba(130,170,255,.14)',
+              bgcolor: 'rgba(15,17,24,.88)',
+              boxShadow:
+                '0 24px 72px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05)',
               backdropFilter: 'blur(18px)',
+              overflow: 'hidden',
+              position: 'relative',
+              '&:before': {
+                content: '""',
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                background:
+                  'linear-gradient(90deg, rgba(69,228,207,.10), transparent 38%, rgba(255,92,152,.10))',
+                opacity: 0.55,
+              },
             }}
           >
-            <Stack spacing={2.5} sx={{ alignItems: 'center' }}>
-              <Box
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={{ xs: 2, md: 2.5 }}
+              sx={{ position: 'relative', alignItems: 'stretch' }}
+            >
+              <Stack
+                spacing={1.5}
                 sx={{
-                  width: 238,
-                  height: 238,
-                  borderRadius: '50%',
-                  display: 'grid',
-                  placeItems: 'center',
-                  background: running
-                    ? 'radial-gradient(circle, rgba(79,227,163,.28), rgba(79,227,163,.05) 62%, transparent 63%)'
-                    : 'radial-gradient(circle, rgba(242,91,150,.30), rgba(242,91,150,.06) 62%, transparent 63%)',
+                  width: { xs: '100%', md: 250 },
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  py: { xs: 1, md: 0 },
                 }}
               >
-                <Button
-                  disabled={busy}
-                  onClick={togglePower}
+                <Box
                   sx={{
-                    width: 188,
-                    height: 188,
+                    width: 190,
+                    height: 190,
                     borderRadius: '50%',
-                    fontSize: 30,
-                    fontWeight: 900,
-                    color: 'white',
+                    display: 'grid',
+                    placeItems: 'center',
                     background: running
-                      ? 'linear-gradient(135deg, #32d486, #29b8a6)'
-                      : 'linear-gradient(135deg, #ff5c98, #ff7a58)',
-                    boxShadow: running
-                      ? '0 18px 48px rgba(50,212,134,.35)'
-                      : '0 18px 48px rgba(255,92,152,.36)',
-                    '&:hover': {
-                      background: running
-                        ? 'linear-gradient(135deg, #2bc177, #24a896)'
-                        : 'linear-gradient(135deg, #f1508d, #f06d4c)',
-                    },
+                      ? 'radial-gradient(circle, rgba(79,227,163,.30), rgba(79,227,163,.06) 63%, transparent 64%)'
+                      : 'radial-gradient(circle, rgba(255,92,152,.30), rgba(255,92,152,.06) 63%, transparent 64%)',
                   }}
                 >
-                  <Stack spacing={1} sx={{ alignItems: 'center' }}>
-                    <PowerSettingsNewRounded sx={{ fontSize: 54 }} />
-                    <span>{running ? '停止' : '启动'}</span>
-                  </Stack>
-                </Button>
-              </Box>
+                  <Button
+                    disabled={busy}
+                    onClick={togglePower}
+                    sx={{
+                      width: 146,
+                      height: 146,
+                      borderRadius: '50%',
+                      fontSize: 24,
+                      fontWeight: 900,
+                      color: 'white',
+                      background: running
+                        ? 'linear-gradient(135deg, #32d486, #21b8a2)'
+                        : 'linear-gradient(135deg, #ff5c98, #ff7a58)',
+                      boxShadow: running
+                        ? '0 16px 40px rgba(50,212,134,.34)'
+                        : '0 16px 40px rgba(255,92,152,.34)',
+                      '&:hover': {
+                        background: running
+                          ? 'linear-gradient(135deg, #2bc177, #1fa18f)'
+                          : 'linear-gradient(135deg, #f1508d, #f06d4c)',
+                      },
+                    }}
+                  >
+                    <Stack spacing={0.6} sx={{ alignItems: 'center' }}>
+                      <PowerSettingsNewRounded sx={{ fontSize: 44 }} />
+                      <span>{running ? '停止' : '启动'}</span>
+                    </Stack>
+                  </Button>
+                </Box>
 
-              <Stack
-                direction="row"
-                spacing={1}
-                useFlexGap
-                sx={{ flexWrap: 'wrap', justifyContent: 'center' }}
-              >
-                <Chip
-                  icon={<BoltRounded />}
-                  color={running ? 'success' : 'default'}
-                  label={running ? '代理已开启' : '代理未开启'}
-                />
-                <Chip
-                  icon={<TuneRounded />}
-                  label={accessName || activeProfileName}
-                />
-                <Chip
-                  icon={<LanguageRounded />}
-                  label={mode === 'global' ? '全局模式' : '规则模式'}
-                />
-                <Chip
-                  icon={<LanRounded />}
-                  color={tunOn ? 'success' : 'default'}
-                  variant={tunOn ? 'filled' : 'outlined'}
-                  label={tunOn ? 'TUN 已开启' : 'TUN 未开启'}
-                />
-                {expiresAt && (
-                  <Chip
-                    color={codeExpired ? 'error' : 'default'}
-                    variant="outlined"
-                    label={codeExpired ? '提取码已过期' : `到期 ${expiresAt}`}
-                  />
-                )}
+                <Stack
+                  spacing={0.6}
+                  sx={{ alignItems: 'center', width: '100%' }}
+                >
+                  <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                    {accessName || activeProfileName}
+                  </Typography>
+                  {expiresAt && (
+                    <Chip
+                      size="small"
+                      color={codeExpired ? 'error' : 'default'}
+                      variant="outlined"
+                      label={codeExpired ? '提取码已过期' : `到期 ${expiresAt}`}
+                    />
+                  )}
+                </Stack>
               </Stack>
 
               <Box
                 sx={{
-                  width: '100%',
-                  borderRadius: 4,
-                  p: 2,
+                  flex: 1,
+                  borderRadius: '18px',
+                  p: { xs: 1.5, md: 2 },
                   border: '1px solid rgba(255,255,255,.08)',
                   bgcolor: 'rgba(255,255,255,.035)',
                 }}
               >
-                <Stack spacing={1.5}>
-                  {!isTunModeAvailable && (
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      startIcon={<BuildRounded />}
-                      disabled={busy}
-                      onClick={async () => {
-                        setBusy(true)
-                        setStatus('正在安装 TUN 服务...')
-                        try {
-                          await installService()
-                          await restartCore()
-                          await mutateSystemState()
-                          setStatus('TUN 服务已安装')
-                        } catch (error) {
-                          setStatus(
-                            error instanceof Error
-                              ? error.message
-                              : String(error),
-                          )
-                        } finally {
-                          setBusy(false)
-                        }
-                      }}
-                    >
-                      安装 TUN 服务
-                    </Button>
-                  )}
-
-                  {tunOn && (
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      color="warning"
-                      startIcon={<LanRounded />}
-                      disabled={busy}
-                      onClick={async () => {
-                        setBusy(true)
-                        setStatus('正在关闭 TUN...')
-                        try {
-                          await patchVerge({ enable_tun_mode: false })
-                          await mutateSystemState()
-                          await refreshAll()
-                          setStatus('TUN 已关闭')
-                        } catch (error) {
-                          setStatus(
-                            error instanceof Error
-                              ? error.message
-                              : String(error),
-                          )
-                        } finally {
-                          setBusy(false)
-                        }
-                      }}
-                    >
-                      关闭 TUN
-                    </Button>
-                  )}
-
+                <Stack spacing={1.2}>
                   <ToggleButtonGroup
                     exclusive
                     value={mode}
                     onChange={changeMode}
                     disabled={busy}
                     fullWidth
+                    size="small"
                     sx={{
                       '& .MuiToggleButton-root': {
-                        py: 1.2,
+                        py: 1,
                         borderColor: 'rgba(255,255,255,.1)',
+                        fontWeight: 700,
                       },
                     }}
                   >
@@ -797,12 +785,8 @@ const HomePage = () => {
                     <ToggleButton value="global">全局模式</ToggleButton>
                   </ToggleButtonGroup>
 
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1}
-                    sx={{ width: '100%' }}
-                  >
-                    <FormControl fullWidth>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <FormControl fullWidth size="small">
                       <InputLabel>选择节点</InputLabel>
                       <Select
                         label="选择节点"
@@ -822,23 +806,20 @@ const HomePage = () => {
                       startIcon={<SpeedRounded />}
                       disabled={busy || delayTesting || nodes.length === 0}
                       onClick={testNodeDelay}
-                      sx={{ minWidth: 132 }}
+                      sx={{ minWidth: 112 }}
                     >
                       {delayTesting ? '测试中' : '测延迟'}
                     </Button>
                   </Stack>
 
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1}
-                    sx={{ width: '100%' }}
-                  >
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                     <TextField
                       fullWidth
+                      size="small"
                       value={code}
                       onChange={(event) => setCode(event.target.value)}
                       label="提取码"
-                      placeholder="输入网页后台生成的提取码"
+                      placeholder="输入后台生成的提取码"
                       slotProps={{
                         input: {
                           startAdornment: (
@@ -853,21 +834,70 @@ const HomePage = () => {
                       variant="contained"
                       disabled={busy}
                       onClick={importByCode}
-                      sx={{ minWidth: 142 }}
+                      sx={{ minWidth: 126 }}
                     >
-                      {isSwitchingCode
-                        ? '切换提取码'
-                        : savedCode
-                          ? '重新订阅'
-                          : '导入订阅'}
+                      {isSwitchingCode ? '切换' : savedCode ? '重订阅' : '导入'}
                     </Button>
                   </Stack>
 
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1}
-                    sx={{ width: '100%' }}
-                  >
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    {!isTunModeAvailable && (
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        startIcon={<BuildRounded />}
+                        disabled={busy}
+                        onClick={async () => {
+                          setBusy(true)
+                          setStatus('正在安装 TUN 服务...')
+                          try {
+                            await installService()
+                            await restartCore()
+                            await mutateSystemState()
+                            setStatus('TUN 服务已安装')
+                          } catch (error) {
+                            setStatus(
+                              error instanceof Error
+                                ? error.message
+                                : String(error),
+                            )
+                          } finally {
+                            setBusy(false)
+                          }
+                        }}
+                      >
+                        安装 TUN
+                      </Button>
+                    )}
+                    {tunOn && (
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        color="warning"
+                        startIcon={<LanRounded />}
+                        disabled={busy}
+                        onClick={async () => {
+                          setBusy(true)
+                          setStatus('正在关闭 TUN...')
+                          try {
+                            await patchVerge({ enable_tun_mode: false })
+                            await mutateSystemState()
+                            await refreshAll()
+                            setStatus('TUN 已关闭')
+                          } catch (error) {
+                            setStatus(
+                              error instanceof Error
+                                ? error.message
+                                : String(error),
+                            )
+                          } finally {
+                            setBusy(false)
+                          }
+                        }}
+                      >
+                        关闭 TUN
+                      </Button>
+                    )}
                     <Button
                       fullWidth
                       variant="outlined"
@@ -888,26 +918,26 @@ const HomePage = () => {
                         openWebUrl(url)
                       }}
                     >
-                      {savedCode ? '续费提取码' : '新购提取码'}
+                      {savedCode ? '续费' : '新购'}
                     </Button>
                   </Stack>
+
+                  {status && (
+                    <Alert
+                      severity={
+                        status.includes('失败') ||
+                        status.includes('错误') ||
+                        status.includes('过期')
+                          ? 'error'
+                          : 'info'
+                      }
+                      sx={{ py: 0.35 }}
+                    >
+                      {status}
+                    </Alert>
+                  )}
                 </Stack>
               </Box>
-
-              {status && (
-                <Alert
-                  severity={
-                    status.includes('失败') ||
-                    status.includes('错误') ||
-                    status.includes('过期')
-                      ? 'error'
-                      : 'info'
-                  }
-                  sx={{ width: '100%', py: 0.5 }}
-                >
-                  {status}
-                </Alert>
-              )}
             </Stack>
           </Paper>
         </Stack>

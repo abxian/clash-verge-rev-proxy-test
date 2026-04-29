@@ -675,10 +675,22 @@ const HomePage = () => {
           justifyContent: 'center',
           px: 1,
           py: 0.75,
+          position: 'relative',
           background:
             'radial-gradient(circle at 16% 10%, rgba(96,190,255,.24), transparent 34%), radial-gradient(circle at 86% 16%, rgba(255,128,170,.18), transparent 32%), linear-gradient(135deg, #eef6ff 0%, #f7f8fb 52%, #fff3f7 100%)',
         }}
       >
+        <Box
+          data-tauri-drag-region="true"
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 88,
+            height: 34,
+            zIndex: 12,
+          }}
+        />
         <Stack
           spacing={1}
           sx={{

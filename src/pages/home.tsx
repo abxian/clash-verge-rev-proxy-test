@@ -673,7 +673,7 @@ const HomePage = () => {
           display: 'grid',
           placeItems: 'center',
           px: 2,
-          py: 2,
+          py: 1.25,
           background:
             'radial-gradient(circle at 16% 10%, rgba(96,190,255,.24), transparent 34%), radial-gradient(circle at 86% 16%, rgba(255,128,170,.18), transparent 32%), linear-gradient(135deg, #eef6ff 0%, #f7f8fb 52%, #fff3f7 100%)',
         }}
@@ -706,7 +706,7 @@ const HomePage = () => {
               >
                 神仙云
               </Typography>
-              <Typography sx={{ color: 'rgba(36,46,66,.68)', fontSize: 13 }}>
+              <Typography sx={{ color: 'rgba(36,46,66,.68)', fontSize: 12 }}>
                 提取码订阅 · 节点选择 · 一键连接
               </Typography>
             </Box>
@@ -741,7 +741,7 @@ const HomePage = () => {
             elevation={0}
             sx={{
               borderRadius: '22px',
-              p: 1.75,
+              p: 1.5,
               border: '1px solid rgba(70,100,145,.16)',
               bgcolor: 'rgba(255,255,255,.76)',
               boxShadow:
@@ -762,13 +762,13 @@ const HomePage = () => {
           >
             <Stack
               direction="row"
-              spacing={1.75}
+              spacing={1.5}
               sx={{ position: 'relative', alignItems: 'stretch' }}
             >
               <Stack
                 spacing={1.25}
                 sx={{
-                  width: 208,
+                  width: 200,
                   alignItems: 'center',
                   justifyContent: 'center',
                   py: 0,
@@ -776,8 +776,8 @@ const HomePage = () => {
               >
                 <Box
                   sx={{
-                    width: 176,
-                    height: 176,
+                    width: 168,
+                    height: 168,
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -793,8 +793,8 @@ const HomePage = () => {
                     disabled={busy}
                     onClick={togglePower}
                     sx={{
-                      width: 136,
-                      height: 136,
+                      width: 130,
+                      height: 130,
                       borderRadius: '50%',
                       fontSize: 22,
                       fontWeight: 900,
@@ -813,7 +813,7 @@ const HomePage = () => {
                     }}
                   >
                     <Stack spacing={0.6} sx={{ alignItems: 'center' }}>
-                      <PowerSettingsNewRounded sx={{ fontSize: 40 }} />
+                      <PowerSettingsNewRounded sx={{ fontSize: 38 }} />
                       <span>{running ? '停止' : '启动'}</span>
                     </Stack>
                   </Button>
@@ -844,7 +844,7 @@ const HomePage = () => {
                   flex: 1,
                   minWidth: 0,
                   borderRadius: '16px',
-                  p: 1.4,
+                  p: 1.25,
                   border: '1px solid rgba(70,100,145,.14)',
                   bgcolor: 'rgba(255,255,255,.58)',
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,.72)',
@@ -869,6 +869,7 @@ const HomePage = () => {
                     sx={{
                       '& .MuiToggleButton-root': {
                         py: 1,
+                        minHeight: 36,
                         borderColor: 'rgba(45,65,105,.16)',
                         fontWeight: 700,
                         color: 'rgba(36,46,66,.72)',
@@ -967,7 +968,7 @@ const HomePage = () => {
                         variant="outlined"
                         startIcon={<BuildRounded />}
                         disabled={busy}
-                        sx={{ flex: '1 1 116px' }}
+                        sx={{ flex: '1 1 110px' }}
                         onClick={async () => {
                           setBusy(true)
                           setStatus('正在安装 TUN 服务...')
@@ -1024,7 +1025,7 @@ const HomePage = () => {
                       startIcon={<CloudSyncRounded />}
                       disabled={busy}
                       onClick={updateCurrentSubscription}
-                      sx={{ flex: '1 1 124px' }}
+                      sx={{ flex: '1 1 116px' }}
                     >
                       更新订阅
                     </Button>

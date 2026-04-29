@@ -61,49 +61,49 @@ const DELAY_TIMEOUT = 5000
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
 const fieldSx = {
   '& .MuiInputLabel-root': {
-    color: 'rgba(240,248,255,.72)',
+    color: 'rgba(36,46,66,.66)',
   },
   '& .MuiInputLabel-root.Mui-focused': {
-    color: '#00f5d4',
+    color: '#1c8dff',
   },
   '& .MuiInputBase-root': {
-    color: '#f8fbff',
-    bgcolor: 'rgba(7,12,20,.72)',
+    color: '#182033',
+    bgcolor: 'rgba(255,255,255,.82)',
   },
   '& .MuiInputBase-input': {
-    color: '#f8fbff',
+    color: '#182033',
   },
   '& .MuiInputBase-input.Mui-disabled': {
-    WebkitTextFillColor: 'rgba(248,251,255,.72)',
+    WebkitTextFillColor: 'rgba(24,32,51,.72)',
   },
   '& .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(255,255,255,.18)',
+    borderColor: 'rgba(45,65,105,.18)',
   },
   '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
-    borderColor: 'rgba(0,245,212,.58)',
+    borderColor: 'rgba(28,141,255,.52)',
   },
   '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-    borderColor: '#00f5d4',
+    borderColor: '#1c8dff',
   },
   '& .MuiSelect-icon': {
-    color: 'rgba(248,251,255,.78)',
+    color: 'rgba(24,32,51,.72)',
   },
   '& .MuiSvgIcon-root': {
-    color: 'rgba(0,245,212,.82)',
+    color: 'rgba(28,141,255,.86)',
   },
 }
 
 const outlineButtonSx = {
-  color: '#e9f8ff',
-  borderColor: 'rgba(0,168,255,.76)',
-  bgcolor: 'rgba(0,168,255,.08)',
+  color: '#176fd6',
+  borderColor: 'rgba(28,141,255,.44)',
+  bgcolor: 'rgba(28,141,255,.06)',
   '&:hover': {
-    borderColor: '#00f5d4',
-    bgcolor: 'rgba(0,245,212,.13)',
+    borderColor: '#1c8dff',
+    bgcolor: 'rgba(28,141,255,.12)',
   },
   '&.Mui-disabled': {
-    color: 'rgba(233,248,255,.48)',
-    borderColor: 'rgba(233,248,255,.18)',
+    color: 'rgba(36,46,66,.38)',
+    borderColor: 'rgba(36,46,66,.16)',
   },
 }
 
@@ -675,7 +675,7 @@ const HomePage = () => {
           px: 2,
           py: 2,
           background:
-            'radial-gradient(circle at 12% 10%, rgba(0,245,212,.24), transparent 34%), radial-gradient(circle at 86% 14%, rgba(255,70,150,.30), transparent 32%), radial-gradient(circle at 52% 100%, rgba(72,112,255,.18), transparent 38%), linear-gradient(135deg, #071118 0%, #10111f 54%, #180f1b 100%)',
+            'radial-gradient(circle at 16% 10%, rgba(96,190,255,.24), transparent 34%), radial-gradient(circle at 86% 16%, rgba(255,128,170,.18), transparent 32%), linear-gradient(135deg, #eef6ff 0%, #f7f8fb 52%, #fff3f7 100%)',
         }}
       >
         <Stack
@@ -700,13 +700,13 @@ const HomePage = () => {
                 sx={{
                   fontWeight: 900,
                   letterSpacing: 0,
-                  color: '#f8fbff',
-                  textShadow: '0 10px 30px rgba(0,245,212,.18)',
+                  color: '#172033',
+                  textShadow: '0 10px 30px rgba(28,141,255,.12)',
                 }}
               >
                 神仙云
               </Typography>
-              <Typography sx={{ color: 'rgba(235,247,255,.70)', fontSize: 13 }}>
+              <Typography sx={{ color: 'rgba(36,46,66,.68)', fontSize: 13 }}>
                 提取码订阅 · 节点选择 · 一键连接
               </Typography>
             </Box>
@@ -742,11 +742,11 @@ const HomePage = () => {
             sx={{
               borderRadius: '22px',
               p: 1.75,
-              border: '1px solid rgba(88,255,220,.22)',
-              bgcolor: 'rgba(9,13,22,.82)',
+              border: '1px solid rgba(70,100,145,.16)',
+              bgcolor: 'rgba(255,255,255,.76)',
               boxShadow:
-                '0 26px 80px rgba(0,0,0,.42), 0 0 0 1px rgba(255,255,255,.03), inset 0 1px 0 rgba(255,255,255,.08)',
-              backdropFilter: 'blur(22px)',
+                '0 22px 58px rgba(42,65,105,.16), 0 0 0 1px rgba(255,255,255,.55), inset 0 1px 0 rgba(255,255,255,.9)',
+              backdropFilter: 'blur(20px)',
               overflow: 'hidden',
               position: 'relative',
               '&:before': {
@@ -755,8 +755,8 @@ const HomePage = () => {
                 inset: 0,
                 pointerEvents: 'none',
                 background:
-                  'linear-gradient(120deg, rgba(0,245,212,.16), transparent 44%, rgba(255,70,150,.14))',
-                opacity: 0.8,
+                  'linear-gradient(120deg, rgba(28,141,255,.09), transparent 44%, rgba(255,128,170,.08))',
+                opacity: 1,
               },
             }}
           >
@@ -782,11 +782,11 @@ const HomePage = () => {
                     display: 'grid',
                     placeItems: 'center',
                     background: running
-                      ? 'radial-gradient(circle, rgba(0,245,212,.36), rgba(0,245,212,.10) 62%, transparent 63%)'
-                      : 'radial-gradient(circle, rgba(255,70,150,.36), rgba(255,70,150,.10) 62%, transparent 63%)',
+                      ? 'radial-gradient(circle, rgba(41,190,160,.22), rgba(41,190,160,.08) 62%, transparent 63%)'
+                      : 'radial-gradient(circle, rgba(255,116,138,.22), rgba(255,116,138,.08) 62%, transparent 63%)',
                     boxShadow: running
-                      ? '0 0 46px rgba(0,245,212,.20)'
-                      : '0 0 46px rgba(255,70,150,.22)',
+                      ? '0 0 38px rgba(41,190,160,.16)'
+                      : '0 0 38px rgba(255,116,138,.16)',
                   }}
                 >
                   <Button
@@ -800,15 +800,15 @@ const HomePage = () => {
                       fontWeight: 900,
                       color: 'white',
                       background: running
-                        ? 'linear-gradient(135deg, #00f5d4, #12c2e9)'
-                        : 'linear-gradient(135deg, #ff3d8d, #ff8a3d)',
+                        ? 'linear-gradient(135deg, #28c99c, #2aa7ff)'
+                        : 'linear-gradient(135deg, #ff6f8f, #ff9b66)',
                       boxShadow: running
-                        ? '0 18px 42px rgba(0,245,212,.34)'
-                        : '0 18px 42px rgba(255,61,141,.34)',
+                        ? '0 18px 34px rgba(42,167,255,.24)'
+                        : '0 18px 34px rgba(255,111,143,.24)',
                       '&:hover': {
                         background: running
-                          ? 'linear-gradient(135deg, #00ddbf, #10afd2)'
-                          : 'linear-gradient(135deg, #ef2f7f, #f07b35)',
+                          ? 'linear-gradient(135deg, #24b88f, #2198ed)'
+                          : 'linear-gradient(135deg, #f26182, #f18e5c)',
                       },
                     }}
                   >
@@ -824,7 +824,7 @@ const HomePage = () => {
                   sx={{ alignItems: 'center', width: '100%' }}
                 >
                   <Typography
-                    sx={{ fontSize: 13, color: 'rgba(248,251,255,.72)' }}
+                    sx={{ fontSize: 13, color: 'rgba(36,46,66,.66)' }}
                   >
                     {accessName || activeProfileName}
                   </Typography>
@@ -845,9 +845,9 @@ const HomePage = () => {
                   minWidth: 0,
                   borderRadius: '16px',
                   p: 1.4,
-                  border: '1px solid rgba(255,255,255,.10)',
-                  bgcolor: 'rgba(255,255,255,.055)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
+                  border: '1px solid rgba(70,100,145,.14)',
+                  bgcolor: 'rgba(255,255,255,.58)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.72)',
                 }}
               >
                 <Stack
@@ -869,15 +869,15 @@ const HomePage = () => {
                     sx={{
                       '& .MuiToggleButton-root': {
                         py: 1,
-                        borderColor: 'rgba(255,255,255,.14)',
+                        borderColor: 'rgba(45,65,105,.16)',
                         fontWeight: 700,
-                        color: 'rgba(240,248,255,.68)',
+                        color: 'rgba(36,46,66,.72)',
                         '&.Mui-selected': {
-                          color: '#071118',
-                          bgcolor: '#00f5d4',
+                          color: '#fff',
+                          bgcolor: '#1c8dff',
                         },
                         '&.Mui-selected:hover': {
-                          bgcolor: '#18e6cc',
+                          bgcolor: '#167ce3',
                         },
                       },
                     }}
@@ -934,8 +934,8 @@ const HomePage = () => {
                         },
                         inputLabel: {
                           sx: {
-                            color: 'rgba(240,248,255,.72)',
-                            '&.Mui-focused': { color: '#00f5d4' },
+                            color: 'rgba(36,46,66,.66)',
+                            '&.Mui-focused': { color: '#1c8dff' },
                           },
                         },
                       }}
@@ -946,10 +946,10 @@ const HomePage = () => {
                       onClick={importByCode}
                       sx={{
                         minWidth: 112,
-                        bgcolor: '#00a8ff',
+                        bgcolor: '#1c8dff',
                         color: '#fff',
                         fontWeight: 800,
-                        '&:hover': { bgcolor: '#0096e6' },
+                        '&:hover': { bgcolor: '#167ce3' },
                       }}
                     >
                       {isSwitchingCode ? '切换' : savedCode ? '重订阅' : '导入'}

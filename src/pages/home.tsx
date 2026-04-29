@@ -59,6 +59,53 @@ const CODE_UPDATE_VERSION_STORAGE_KEY = 'shenxianyun.updateVersion'
 const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
 const DELAY_TIMEOUT = 5000
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
+const fieldSx = {
+  '& .MuiInputLabel-root': {
+    color: 'rgba(240,248,255,.72)',
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: '#00f5d4',
+  },
+  '& .MuiInputBase-root': {
+    color: '#f8fbff',
+    bgcolor: 'rgba(7,12,20,.72)',
+  },
+  '& .MuiInputBase-input': {
+    color: '#f8fbff',
+  },
+  '& .MuiInputBase-input.Mui-disabled': {
+    WebkitTextFillColor: 'rgba(248,251,255,.72)',
+  },
+  '& .MuiOutlinedInput-notchedOutline': {
+    borderColor: 'rgba(255,255,255,.18)',
+  },
+  '& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline': {
+    borderColor: 'rgba(0,245,212,.58)',
+  },
+  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+    borderColor: '#00f5d4',
+  },
+  '& .MuiSelect-icon': {
+    color: 'rgba(248,251,255,.78)',
+  },
+  '& .MuiSvgIcon-root': {
+    color: 'rgba(0,245,212,.82)',
+  },
+}
+
+const outlineButtonSx = {
+  color: '#e9f8ff',
+  borderColor: 'rgba(0,168,255,.76)',
+  bgcolor: 'rgba(0,168,255,.08)',
+  '&:hover': {
+    borderColor: '#00f5d4',
+    bgcolor: 'rgba(0,245,212,.13)',
+  },
+  '&.Mui-disabled': {
+    color: 'rgba(233,248,255,.48)',
+    borderColor: 'rgba(233,248,255,.18)',
+  },
+}
 
 const getClientId = () => {
   const saved = localStorage.getItem(CLIENT_ID_STORAGE_KEY)
@@ -776,7 +823,9 @@ const HomePage = () => {
                   spacing={0.6}
                   sx={{ alignItems: 'center', width: '100%' }}
                 >
-                  <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+                  <Typography
+                    sx={{ fontSize: 13, color: 'rgba(248,251,255,.72)' }}
+                  >
                     {accessName || activeProfileName}
                   </Typography>
                   {expiresAt && (
@@ -801,7 +850,15 @@ const HomePage = () => {
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
                 }}
               >
-                <Stack spacing={1}>
+                <Stack
+                  spacing={1}
+                  sx={{
+                    '& .MuiButton-outlined': outlineButtonSx,
+                    '& .MuiButton-contained.Mui-disabled': {
+                      color: 'rgba(255,255,255,.56)',
+                    },
+                  }}
+                >
                   <ToggleButtonGroup
                     exclusive
                     value={mode}
@@ -833,6 +890,7 @@ const HomePage = () => {
                     <FormControl fullWidth size="small">
                       <InputLabel>选择节点</InputLabel>
                       <Select
+                        sx={fieldSx}
                         label="选择节点"
                         value={selectedNode}
                         onChange={(event) => changeNode(event.target.value)}
@@ -860,17 +918,25 @@ const HomePage = () => {
                     <TextField
                       fullWidth
                       size="small"
+                      sx={fieldSx}
                       value={code}
                       onChange={(event) => setCode(event.target.value)}
                       label="提取码"
                       placeholder="输入后台生成的提取码"
                       slotProps={{
                         input: {
+                          sx: fieldSx,
                           startAdornment: (
                             <KeyRounded
-                              sx={{ mr: 1, color: 'text.secondary' }}
+                              sx={{ mr: 1, color: 'rgba(0,245,212,.82)' }}
                             />
                           ),
+                        },
+                        inputLabel: {
+                          sx: {
+                            color: 'rgba(240,248,255,.72)',
+                            '&.Mui-focused': { color: '#00f5d4' },
+                          },
                         },
                       }}
                     />
@@ -881,6 +947,8 @@ const HomePage = () => {
                       sx={{
                         minWidth: 112,
                         bgcolor: '#00a8ff',
+                        color: '#fff',
+                        fontWeight: 800,
                         '&:hover': { bgcolor: '#0096e6' },
                       }}
                     >

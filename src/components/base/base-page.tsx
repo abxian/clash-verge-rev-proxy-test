@@ -1,6 +1,7 @@
 import { Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import React, { ReactNode } from 'react'
+import type React from 'react'
+import type { ReactNode } from 'react'
 
 import { BaseErrorBoundary } from './base-error-boundary'
 
@@ -17,20 +18,23 @@ export const BasePage: React.FC<Props> = (props) => {
   const theme = useTheme()
 
   const isDark = theme.palette.mode === 'dark'
+  const showHeader = Boolean(title || header)
 
   return (
     <BaseErrorBoundary>
       <div className="base-page">
-        <header data-tauri-drag-region="true" style={{ userSelect: 'none' }}>
-          <Typography
-            sx={{ fontSize: '20px', fontWeight: '700 ' }}
-            data-tauri-drag-region="true"
-          >
-            {title}
-          </Typography>
+        {showHeader && (
+          <header data-tauri-drag-region="true" style={{ userSelect: 'none' }}>
+            <Typography
+              sx={{ fontSize: '20px', fontWeight: '700 ' }}
+              data-tauri-drag-region="true"
+            >
+              {title}
+            </Typography>
 
-          {header}
-        </header>
+            {header}
+          </header>
+        )}
 
         <div
           className={full ? 'base-container no-padding' : 'base-container'}

@@ -266,6 +266,21 @@
 }
 
 .layout.layout--simple {
+  background: transparent !important;
+
+  .the_titlebar {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 20;
+    width: auto;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    color: rgba(255, 255, 255, 0.86);
+    background: transparent;
+  }
+
   .layout-content__left {
     display: none !important;
   }

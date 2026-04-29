@@ -5,7 +5,7 @@ import { forwardRef, useImperativeHandle } from 'react'
 import { useWindowControls } from '@/hooks/use-window'
 import getSystem from '@/utils/get-system'
 
-export const WindowControls = forwardRef(function WindowControls(props, ref) {
+export const WindowControls = forwardRef(function WindowControls(_props, ref) {
   const OS = getSystem()
   const {
     currentWindow,
@@ -78,17 +78,6 @@ export const WindowControls = forwardRef(function WindowControls(props, ref) {
           {/* Windows 风格：最小化 → 最大化 → 关闭 */}
           <IconButton size="small" sx={{ fontSize: 16 }} onClick={minimize}>
             <Minimize fontSize="inherit" color="inherit" />
-          </IconButton>
-          <IconButton
-            size="small"
-            sx={{ fontSize: 16 }}
-            onClick={toggleMaximize}
-          >
-            {maximized ? (
-              <FilterNone fontSize="inherit" color="inherit" />
-            ) : (
-              <CropSquare fontSize="inherit" color="inherit" />
-            )}
           </IconButton>
           <IconButton
             size="small"

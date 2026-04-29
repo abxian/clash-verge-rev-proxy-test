@@ -19,7 +19,9 @@ const MINIMAL_HEIGHT: f64 = DEFAULT_HEIGHT;
 
 #[cfg(target_os = "linux")]
 const DEFAULT_DECORATIONS: bool = false;
-#[cfg(not(target_os = "linux"))]
+#[cfg(target_os = "windows")]
+const DEFAULT_DECORATIONS: bool = false;
+#[cfg(not(any(target_os = "linux", target_os = "windows")))]
 const DEFAULT_DECORATIONS: bool = true;
 
 /// 构建新的 WebView 窗口
@@ -63,6 +65,7 @@ pub async fn build_new_window() -> Result<WebviewWindow, String> {
     .title("神仙云")
     .center()
     .resizable(false)
+    .maximizable(false)
     .decorations(DEFAULT_DECORATIONS)
     .fullscreen(false)
     .inner_size(DEFAULT_WIDTH, DEFAULT_HEIGHT)

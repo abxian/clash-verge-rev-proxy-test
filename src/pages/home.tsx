@@ -77,6 +77,10 @@ type VerifyResponse = {
   message?: string
 }
 
+type ValidVerifyResponse = VerifyResponse & {
+  subscription_url: string
+}
+
 type UpdateStateResponse = {
   ok?: boolean
   update_version?: number
@@ -206,7 +210,7 @@ const HomePage = () => {
     savedCode && code.trim() && code.trim() !== savedCode,
   )
   const codeExpired = Boolean(expiresAt && nowMs > parseExpireTime(expiresAt))
-  const verifyCode = async (input: string): Promise<VerifyResponse> => {
+  const verifyCode = async (input: string): Promise<ValidVerifyResponse> => {
     const response = await tauriFetch(
       `${SUBSCRIPTION_BASE_URL}/api/verify/${encodeURIComponent(input)}`,
       {
@@ -222,27 +226,33 @@ const HomePage = () => {
     if (!response.ok || !data.ok || !data.subscription_url) {
       throw new Error(data.message || '提取码验证失败')
     }
-    return data
+    return { ...data, subscription_url: data.subscription_url }
   }
 
-  const updateState = async (input: string): Promise<UpdateStateResponse> => {
-    const response = await tauriFetch(
-      `${SUBSCRIPTION_BASE_URL}/api/update-state/${encodeURIComponent(input)}`,
-      {
-        method: 'GET',
-        connectTimeout: 8000,
-        headers: {
-          'User-Agent': CLIENT_UA,
-          'X-Client-Type': 'shenxianyun-windows',
+  const updateState = useCallback(
+    async (input: string): Promise<UpdateStateResponse> => {
+      const response = await tauriFetch(
+        `${SUBSCRIPTION_BASE_URL}/api/update-state/${encodeURIComponent(input)}`,
+        {
+          method: 'GET',
+          connectTimeout: 8000,
+          headers: {
+            'User-Agent': CLIENT_UA,
+            'X-Client-Type': 'shenxianyun-windows',
+          },
         },
-      },
-    )
-    const data = (await response.json()) as UpdateStateResponse
-    if (!response.ok || !data.ok) {
-      throw new AccessCodeStateError(data.message || '提取码已失效或过期', true)
-    }
-    return data
-  }
+      )
+      const data = (await response.json()) as UpdateStateResponse
+      if (!response.ok || !data.ok) {
+        throw new AccessCodeStateError(
+          data.message || '提取码已失效或过期',
+          true,
+        )
+      }
+      return data
+    },
+    [],
+  )
 
   const sendClientPresence = useCallback(
     async (online: boolean) => {
@@ -286,7 +296,7 @@ const HomePage = () => {
           await deleteProfile(current.uid).catch(() => {})
         }
 
-        await importProfile(data.subscription_url!, {
+        await importProfile(data.subscription_url, {
           with_proxy: true,
           allow_auto_update: true,
           update_interval: 60,
@@ -457,6 +467,7 @@ const HomePage = () => {
     systemProxyOn,
     toggleSystemProxy,
     tunOn,
+    updateState,
   ])
 
   const updateCurrentSubscription = useLockFn(async () => {
@@ -600,19 +611,34 @@ const HomePage = () => {
   })
 
   return (
-    <BasePage title="神仙云">
+    <BasePage
+      full
+      contentStyle={{
+        height: '100%',
+        padding: 0,
+        overflow: 'hidden',
+      }}
+    >
       <Box
         sx={{
-          minHeight: '100%',
+          height: '100%',
+          minHeight: 0,
           display: 'grid',
           placeItems: 'center',
-          px: 2.5,
-          py: 2.5,
+          px: { xs: 1.5, md: 2 },
+          py: { xs: 1.5, md: 2 },
           background:
             'radial-gradient(circle at 18% 12%, rgba(69,228,207,.13), transparent 30%), radial-gradient(circle at 74% 8%, rgba(255,92,152,.18), transparent 32%), linear-gradient(135deg, rgba(10,12,18,.18), rgba(18,20,28,.04))',
         }}
       >
-        <Stack spacing={1.5} sx={{ width: 'min(900px, 100%)' }}>
+        <Stack
+          spacing={1}
+          sx={{
+            width: 'min(880px, 100%)',
+            maxHeight: '100%',
+            minHeight: 0,
+          }}
+        >
           <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={1}
@@ -623,7 +649,7 @@ const HomePage = () => {
           >
             <Box>
               <Typography
-                variant="h4"
+                variant="h5"
                 sx={{ fontWeight: 900, letterSpacing: 0 }}
               >
                 神仙云
@@ -662,8 +688,8 @@ const HomePage = () => {
           <Paper
             elevation={0}
             sx={{
-              borderRadius: '24px',
-              p: { xs: 2, md: 2.5 },
+              borderRadius: '22px',
+              p: { xs: 1.5, md: 2 },
               border: '1px solid rgba(130,170,255,.14)',
               bgcolor: 'rgba(15,17,24,.88)',
               boxShadow:
@@ -690,16 +716,16 @@ const HomePage = () => {
               <Stack
                 spacing={1.5}
                 sx={{
-                  width: { xs: '100%', md: 250 },
+                  width: { xs: '100%', md: 218 },
                   alignItems: 'center',
                   justifyContent: 'center',
-                  py: { xs: 1, md: 0 },
+                  py: 0,
                 }}
               >
                 <Box
                   sx={{
-                    width: 190,
-                    height: 190,
+                    width: { xs: 168, md: 176 },
+                    height: { xs: 168, md: 176 },
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -712,10 +738,10 @@ const HomePage = () => {
                     disabled={busy}
                     onClick={togglePower}
                     sx={{
-                      width: 146,
-                      height: 146,
+                      width: { xs: 128, md: 136 },
+                      height: { xs: 128, md: 136 },
                       borderRadius: '50%',
-                      fontSize: 24,
+                      fontSize: 22,
                       fontWeight: 900,
                       color: 'white',
                       background: running
@@ -732,7 +758,7 @@ const HomePage = () => {
                     }}
                   >
                     <Stack spacing={0.6} sx={{ alignItems: 'center' }}>
-                      <PowerSettingsNewRounded sx={{ fontSize: 44 }} />
+                      <PowerSettingsNewRounded sx={{ fontSize: 40 }} />
                       <span>{running ? '停止' : '启动'}</span>
                     </Stack>
                   </Button>
@@ -759,13 +785,14 @@ const HomePage = () => {
               <Box
                 sx={{
                   flex: 1,
-                  borderRadius: '18px',
-                  p: { xs: 1.5, md: 2 },
+                  minWidth: 0,
+                  borderRadius: '16px',
+                  p: { xs: 1.25, md: 1.5 },
                   border: '1px solid rgba(255,255,255,.08)',
                   bgcolor: 'rgba(255,255,255,.035)',
                 }}
               >
-                <Stack spacing={1.2}>
+                <Stack spacing={1}>
                   <ToggleButtonGroup
                     exclusive
                     value={mode}
@@ -806,7 +833,7 @@ const HomePage = () => {
                       startIcon={<SpeedRounded />}
                       disabled={busy || delayTesting || nodes.length === 0}
                       onClick={testNodeDelay}
-                      sx={{ minWidth: 112 }}
+                      sx={{ minWidth: { xs: '100%', sm: 104 } }}
                     >
                       {delayTesting ? '测试中' : '测延迟'}
                     </Button>
@@ -834,19 +861,24 @@ const HomePage = () => {
                       variant="contained"
                       disabled={busy}
                       onClick={importByCode}
-                      sx={{ minWidth: 126 }}
+                      sx={{ minWidth: { xs: '100%', sm: 112 } }}
                     >
                       {isSwitchingCode ? '切换' : savedCode ? '重订阅' : '导入'}
                     </Button>
                   </Stack>
 
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    useFlexGap
+                    sx={{ flexWrap: 'wrap' }}
+                  >
                     {!isTunModeAvailable && (
                       <Button
-                        fullWidth
                         variant="outlined"
                         startIcon={<BuildRounded />}
                         disabled={busy}
+                        sx={{ flex: '1 1 120px' }}
                         onClick={async () => {
                           setBusy(true)
                           setStatus('正在安装 TUN 服务...')
@@ -871,11 +903,11 @@ const HomePage = () => {
                     )}
                     {tunOn && (
                       <Button
-                        fullWidth
                         variant="outlined"
                         color="warning"
                         startIcon={<LanRounded />}
                         disabled={busy}
+                        sx={{ flex: '1 1 110px' }}
                         onClick={async () => {
                           setBusy(true)
                           setStatus('正在关闭 TUN...')
@@ -899,18 +931,18 @@ const HomePage = () => {
                       </Button>
                     )}
                     <Button
-                      fullWidth
                       variant="outlined"
                       startIcon={<CloudSyncRounded />}
                       disabled={busy}
                       onClick={updateCurrentSubscription}
+                      sx={{ flex: '1 1 130px' }}
                     >
                       更新订阅
                     </Button>
                     <Button
-                      fullWidth
                       variant="outlined"
                       startIcon={<ShoppingCartRounded />}
+                      sx={{ flex: '1 1 100px' }}
                       onClick={() => {
                         const url = savedCode
                           ? `${SUBSCRIPTION_BASE_URL}/pay?action=renew&code=${encodeURIComponent(savedCode)}`

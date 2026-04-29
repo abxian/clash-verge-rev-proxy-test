@@ -11,6 +11,7 @@ mod module;
 mod process;
 pub mod utils;
 
+#[cfg(not(target_os = "windows"))]
 use crate::constants::files;
 use crate::{
     core::handle,
@@ -118,6 +119,7 @@ mod app_init {
     }
 
     /// Setup window state management
+    #[cfg(not(target_os = "windows"))]
     pub fn setup_window_state(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         logging!(info, Type::Setup, "初始化窗口状态管理...");
         let window_state_plugin = tauri_plugin_window_state::Builder::new()
@@ -245,6 +247,7 @@ pub fn run() {
 
             app_init::setup_deep_links(app);
 
+            #[cfg(not(target_os = "windows"))]
             if let Err(e) = app_init::setup_window_state(app) {
                 logging!(error, Type::Setup, "Failed to setup window state: {}", e);
             }

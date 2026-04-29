@@ -670,10 +670,11 @@ const HomePage = () => {
         sx={{
           height: '100%',
           minHeight: 0,
-          display: 'grid',
-          placeItems: 'center',
-          px: 2,
-          py: 1.25,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          px: 1,
+          py: 0.75,
           background:
             'radial-gradient(circle at 16% 10%, rgba(96,190,255,.24), transparent 34%), radial-gradient(circle at 86% 16%, rgba(255,128,170,.18), transparent 32%), linear-gradient(135deg, #eef6ff 0%, #f7f8fb 52%, #fff3f7 100%)',
         }}
@@ -681,7 +682,7 @@ const HomePage = () => {
         <Stack
           spacing={1}
           sx={{
-            width: 'min(720px, 100%)',
+            width: 'min(735px, 100%)',
             maxHeight: '100%',
             minHeight: 0,
           }}
@@ -741,7 +742,7 @@ const HomePage = () => {
             elevation={0}
             sx={{
               borderRadius: '22px',
-              p: 1.5,
+              p: 1.15,
               border: '1px solid rgba(70,100,145,.16)',
               bgcolor: 'rgba(255,255,255,.76)',
               boxShadow:
@@ -762,13 +763,13 @@ const HomePage = () => {
           >
             <Stack
               direction="row"
-              spacing={1.5}
+              spacing={1.15}
               sx={{ position: 'relative', alignItems: 'stretch' }}
             >
               <Stack
                 spacing={1.25}
                 sx={{
-                  width: 200,
+                  width: 180,
                   alignItems: 'center',
                   justifyContent: 'center',
                   py: 0,
@@ -776,8 +777,8 @@ const HomePage = () => {
               >
                 <Box
                   sx={{
-                    width: 168,
-                    height: 168,
+                    width: 146,
+                    height: 146,
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
@@ -793,10 +794,10 @@ const HomePage = () => {
                     disabled={busy}
                     onClick={togglePower}
                     sx={{
-                      width: 130,
-                      height: 130,
+                      width: 116,
+                      height: 116,
                       borderRadius: '50%',
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: 900,
                       color: 'white',
                       background: running
@@ -813,7 +814,7 @@ const HomePage = () => {
                     }}
                   >
                     <Stack spacing={0.6} sx={{ alignItems: 'center' }}>
-                      <PowerSettingsNewRounded sx={{ fontSize: 38 }} />
+                      <PowerSettingsNewRounded sx={{ fontSize: 34 }} />
                       <span>{running ? '停止' : '启动'}</span>
                     </Stack>
                   </Button>
@@ -844,7 +845,7 @@ const HomePage = () => {
                   flex: 1,
                   minWidth: 0,
                   borderRadius: '16px',
-                  p: 1.25,
+                  p: 1,
                   border: '1px solid rgba(70,100,145,.14)',
                   bgcolor: 'rgba(255,255,255,.58)',
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,.72)',
@@ -868,8 +869,8 @@ const HomePage = () => {
                     size="small"
                     sx={{
                       '& .MuiToggleButton-root': {
-                        py: 1,
-                        minHeight: 36,
+                        py: 0.75,
+                        minHeight: 34,
                         borderColor: 'rgba(45,65,105,.16)',
                         fontWeight: 700,
                         color: 'rgba(36,46,66,.72)',

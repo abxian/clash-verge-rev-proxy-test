@@ -625,16 +625,16 @@ const HomePage = () => {
           minHeight: 0,
           display: 'grid',
           placeItems: 'center',
-          px: { xs: 1.5, md: 2 },
-          py: { xs: 1.5, md: 2 },
+          px: 2,
+          py: 2,
           background:
-            'radial-gradient(circle at 18% 12%, rgba(69,228,207,.13), transparent 30%), radial-gradient(circle at 74% 8%, rgba(255,92,152,.18), transparent 32%), linear-gradient(135deg, rgba(10,12,18,.18), rgba(18,20,28,.04))',
+            'radial-gradient(circle at 12% 10%, rgba(0,245,212,.24), transparent 34%), radial-gradient(circle at 86% 14%, rgba(255,70,150,.30), transparent 32%), radial-gradient(circle at 52% 100%, rgba(72,112,255,.18), transparent 38%), linear-gradient(135deg, #071118 0%, #10111f 54%, #180f1b 100%)',
         }}
       >
         <Stack
           spacing={1}
           sx={{
-            width: 'min(880px, 100%)',
+            width: 'min(720px, 100%)',
             maxHeight: '100%',
             minHeight: 0,
           }}
@@ -650,11 +650,16 @@ const HomePage = () => {
             <Box>
               <Typography
                 variant="h5"
-                sx={{ fontWeight: 900, letterSpacing: 0 }}
+                sx={{
+                  fontWeight: 900,
+                  letterSpacing: 0,
+                  color: '#f8fbff',
+                  textShadow: '0 10px 30px rgba(0,245,212,.18)',
+                }}
               >
                 神仙云
               </Typography>
-              <Typography color="text.secondary" sx={{ fontSize: 14 }}>
+              <Typography sx={{ color: 'rgba(235,247,255,.70)', fontSize: 13 }}>
                 提取码订阅 · 节点选择 · 一键连接
               </Typography>
             </Box>
@@ -689,12 +694,12 @@ const HomePage = () => {
             elevation={0}
             sx={{
               borderRadius: '22px',
-              p: { xs: 1.5, md: 2 },
-              border: '1px solid rgba(130,170,255,.14)',
-              bgcolor: 'rgba(15,17,24,.88)',
+              p: 1.75,
+              border: '1px solid rgba(88,255,220,.22)',
+              bgcolor: 'rgba(9,13,22,.82)',
               boxShadow:
-                '0 24px 72px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05)',
-              backdropFilter: 'blur(18px)',
+                '0 26px 80px rgba(0,0,0,.42), 0 0 0 1px rgba(255,255,255,.03), inset 0 1px 0 rgba(255,255,255,.08)',
+              backdropFilter: 'blur(22px)',
               overflow: 'hidden',
               position: 'relative',
               '&:before': {
@@ -703,20 +708,20 @@ const HomePage = () => {
                 inset: 0,
                 pointerEvents: 'none',
                 background:
-                  'linear-gradient(90deg, rgba(69,228,207,.10), transparent 38%, rgba(255,92,152,.10))',
-                opacity: 0.55,
+                  'linear-gradient(120deg, rgba(0,245,212,.16), transparent 44%, rgba(255,70,150,.14))',
+                opacity: 0.8,
               },
             }}
           >
             <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={{ xs: 2, md: 2.5 }}
+              direction="row"
+              spacing={1.75}
               sx={{ position: 'relative', alignItems: 'stretch' }}
             >
               <Stack
-                spacing={1.5}
+                spacing={1.25}
                 sx={{
-                  width: { xs: '100%', md: 218 },
+                  width: 208,
                   alignItems: 'center',
                   justifyContent: 'center',
                   py: 0,
@@ -724,36 +729,39 @@ const HomePage = () => {
               >
                 <Box
                   sx={{
-                    width: { xs: 168, md: 176 },
-                    height: { xs: 168, md: 176 },
+                    width: 176,
+                    height: 176,
                     borderRadius: '50%',
                     display: 'grid',
                     placeItems: 'center',
                     background: running
-                      ? 'radial-gradient(circle, rgba(79,227,163,.30), rgba(79,227,163,.06) 63%, transparent 64%)'
-                      : 'radial-gradient(circle, rgba(255,92,152,.30), rgba(255,92,152,.06) 63%, transparent 64%)',
+                      ? 'radial-gradient(circle, rgba(0,245,212,.36), rgba(0,245,212,.10) 62%, transparent 63%)'
+                      : 'radial-gradient(circle, rgba(255,70,150,.36), rgba(255,70,150,.10) 62%, transparent 63%)',
+                    boxShadow: running
+                      ? '0 0 46px rgba(0,245,212,.20)'
+                      : '0 0 46px rgba(255,70,150,.22)',
                   }}
                 >
                   <Button
                     disabled={busy}
                     onClick={togglePower}
                     sx={{
-                      width: { xs: 128, md: 136 },
-                      height: { xs: 128, md: 136 },
+                      width: 136,
+                      height: 136,
                       borderRadius: '50%',
                       fontSize: 22,
                       fontWeight: 900,
                       color: 'white',
                       background: running
-                        ? 'linear-gradient(135deg, #32d486, #21b8a2)'
-                        : 'linear-gradient(135deg, #ff5c98, #ff7a58)',
+                        ? 'linear-gradient(135deg, #00f5d4, #12c2e9)'
+                        : 'linear-gradient(135deg, #ff3d8d, #ff8a3d)',
                       boxShadow: running
-                        ? '0 16px 40px rgba(50,212,134,.34)'
-                        : '0 16px 40px rgba(255,92,152,.34)',
+                        ? '0 18px 42px rgba(0,245,212,.34)'
+                        : '0 18px 42px rgba(255,61,141,.34)',
                       '&:hover': {
                         background: running
-                          ? 'linear-gradient(135deg, #2bc177, #1fa18f)'
-                          : 'linear-gradient(135deg, #f1508d, #f06d4c)',
+                          ? 'linear-gradient(135deg, #00ddbf, #10afd2)'
+                          : 'linear-gradient(135deg, #ef2f7f, #f07b35)',
                       },
                     }}
                   >
@@ -787,9 +795,10 @@ const HomePage = () => {
                   flex: 1,
                   minWidth: 0,
                   borderRadius: '16px',
-                  p: { xs: 1.25, md: 1.5 },
-                  border: '1px solid rgba(255,255,255,.08)',
-                  bgcolor: 'rgba(255,255,255,.035)',
+                  p: 1.4,
+                  border: '1px solid rgba(255,255,255,.10)',
+                  bgcolor: 'rgba(255,255,255,.055)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,.06)',
                 }}
               >
                 <Stack spacing={1}>
@@ -803,8 +812,16 @@ const HomePage = () => {
                     sx={{
                       '& .MuiToggleButton-root': {
                         py: 1,
-                        borderColor: 'rgba(255,255,255,.1)',
+                        borderColor: 'rgba(255,255,255,.14)',
                         fontWeight: 700,
+                        color: 'rgba(240,248,255,.68)',
+                        '&.Mui-selected': {
+                          color: '#071118',
+                          bgcolor: '#00f5d4',
+                        },
+                        '&.Mui-selected:hover': {
+                          bgcolor: '#18e6cc',
+                        },
                       },
                     }}
                   >
@@ -833,7 +850,7 @@ const HomePage = () => {
                       startIcon={<SpeedRounded />}
                       disabled={busy || delayTesting || nodes.length === 0}
                       onClick={testNodeDelay}
-                      sx={{ minWidth: { xs: '100%', sm: 104 } }}
+                      sx={{ minWidth: 104 }}
                     >
                       {delayTesting ? '测试中' : '测延迟'}
                     </Button>
@@ -861,7 +878,11 @@ const HomePage = () => {
                       variant="contained"
                       disabled={busy}
                       onClick={importByCode}
-                      sx={{ minWidth: { xs: '100%', sm: 112 } }}
+                      sx={{
+                        minWidth: 112,
+                        bgcolor: '#00a8ff',
+                        '&:hover': { bgcolor: '#0096e6' },
+                      }}
                     >
                       {isSwitchingCode ? '切换' : savedCode ? '重订阅' : '导入'}
                     </Button>
@@ -878,7 +899,7 @@ const HomePage = () => {
                         variant="outlined"
                         startIcon={<BuildRounded />}
                         disabled={busy}
-                        sx={{ flex: '1 1 120px' }}
+                        sx={{ flex: '1 1 116px' }}
                         onClick={async () => {
                           setBusy(true)
                           setStatus('正在安装 TUN 服务...')
@@ -935,14 +956,14 @@ const HomePage = () => {
                       startIcon={<CloudSyncRounded />}
                       disabled={busy}
                       onClick={updateCurrentSubscription}
-                      sx={{ flex: '1 1 130px' }}
+                      sx={{ flex: '1 1 124px' }}
                     >
                       更新订阅
                     </Button>
                     <Button
                       variant="outlined"
                       startIcon={<ShoppingCartRounded />}
-                      sx={{ flex: '1 1 100px' }}
+                      sx={{ flex: '1 1 96px' }}
                       onClick={() => {
                         const url = savedCode
                           ? `${SUBSCRIPTION_BASE_URL}/pay?action=renew&code=${encodeURIComponent(savedCode)}`

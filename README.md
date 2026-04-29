@@ -1,127 +1,187 @@
-<h1 align="center">
-  <img src="./src-tauri/icons/icon.png" alt="Clash" width="128" />
-  <br>
-  Continuation of <a href="https://github.com/zzzgydi/clash-verge">Clash Verge</a>
-  <br>
-</h1>
+# 神仙云 Windows 客户端
 
-<h3 align="center">
-A Clash Meta GUI based on <a href="https://github.com/tauri-apps/tauri">Tauri</a>.
-</h3>
+这是神仙云桌面客户端，基于 Clash Verge Rev / Tauri 2 / Mihomo 改造。目标是把原本复杂的 Clash 客户端改成小白可用的一页式代理工具。
 
-<p align="center">
-  Languages:
-  <a href="./README.md">简体中文</a> ·
-  <a href="./docs/README_en.md">English</a> ·
-  <a href="./docs/README_es.md">Español</a> ·
-  <a href="./docs/README_ru.md">Русский</a> ·
-  <a href="./docs/README_ja.md">日本語</a> ·
-  <a href="./docs/README_ko.md">한국어</a> ·
-  <a href="./docs/README_fa.md">فارسی</a>
-</p>
+## 当前功能
 
-## Preview
+- 提取码订阅
+  - 用户只需要输入后台生成的提取码。
+  - 客户端请求 `https://sub.jc116.com/api/verify/<code>` 获取订阅地址。
+  - 导入后保存提取码、订阅名称、过期时间、更新版本。
+  - 切换提取码时会删除旧订阅信息。
+- 一键连接
+  - 首页保留大按钮启动/停止代理。
+  - 支持规则模式和全局模式。
+  - 保留代理页面，用于选择策略组和节点。
+  - 支持系统代理和 TUN 虚拟网卡模式。
+- 节点和订阅
+  - 自动导入后台返回的订阅。
+  - 支持节点延迟测试。
+  - 支持后台推送订阅更新，客户端定时检查更新版本。
+  - `sub.jc116.com` 被写入直连规则，避免客户端连接后台时走代理导致失败。
+- 客户端在线统计
+  - 开启代理后向后台上报在线。
+  - 停止代理后向后台上报离线。
+  - 后台可看到设备类型、IP、版本、提取码。
+- 深度链接
+  - 支持 `shenxianyun://install-config?url=<订阅地址>&name=<名称>`。
+  - 也保留 `clash://`、`clash-verge://` 兼容协议。
+- UI 改造
+  - 默认固定窗口，简化导航。
+  - 首页是神仙云的一页式操作面板。
+  - 去掉大量原 Clash Verge 的复杂入口。
 
-| Dark                             | Light                             |
-| -------------------------------- | --------------------------------- |
-| ![预览](./docs/preview_dark.png) | ![预览](./docs/preview_light.png) |
+## 目录结构
 
-## Install
+```text
+clash-verge-rev/
+  src/                         # React 前端
+    pages/home.tsx             # 神仙云首页主逻辑
+    pages/proxies.tsx          # 代理/节点页面
+  src-tauri/                   # Tauri + Rust 后端
+    tauri.conf.json            # Tauri 配置、协议、图标
+    tauri.windows.conf.json    # Windows 特定配置
+    src/
+      utils/resolve/scheme.rs  # shenxianyun:// 深度链接导入
+      config/config.rs         # Mihomo 配置增强和直连规则
+      core/tray/               # 托盘菜单
+  package.json                 # pnpm 脚本和前端依赖
+```
 
-请到发布页面下载对应的安装包：[Release page](https://github.com/clash-verge-rev/clash-verge-rev/releases)<br>
-Go to the [Release page](https://github.com/clash-verge-rev/clash-verge-rev/releases) to download the corresponding installation package<br>
-Supports Windows (x64/x86), Linux (x64/arm64) and macOS 11+ (intel/apple).
+## 环境要求
 
-#### 我应当怎样选择发行版
+Windows 本地编译推荐：
 
-| 版本        | 特征                                     | 链接                                                                                   |
-| :---------- | :--------------------------------------- | :------------------------------------------------------------------------------------- |
-| Stable      | 正式版，高可靠性，适合日常使用。         | [Release](https://github.com/clash-verge-rev/clash-verge-rev/releases)                 |
-| Alpha(废弃) | 测试发布流程。                           | [Alpha](https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/alpha)         |
-| AutoBuild   | 滚动更新版，适合测试反馈，可能存在缺陷。 | [AutoBuild](https://github.com/clash-verge-rev/clash-verge-rev/releases/tag/autobuild) |
+- Windows 10/11 x64
+- Node.js 24.x
+- pnpm 10.x
+- Rust 1.91 或更高
+- Visual Studio 2022 Build Tools
+  - Desktop development with C++
+  - MSVC
+  - Windows SDK
+- WebView2 Runtime
+- Git
 
-#### 安装说明和常见问题，请到 [文档页](https://clash-verge-rev.github.io/) 查看
+检查环境：
 
-### TG 频道: [@clash_verge_rev](https://t.me/clash_verge_re)
+```powershell
+node -v
+pnpm -v
+rustc -V
+cargo -V
+```
 
----
+## 初始化依赖
 
-## Promotion
+```powershell
+cd C:\Users\fucku\Desktop\vpn\clash-verge-rev
+pnpm install
+```
 
-### ✈️ [狗狗加速 —— 技术流机场 Doggygo VPN](https://verge.dginv.click/#/register?code=oaxsAGo6)
+如果首次构建缺少 Rust target：
 
-🚀 高性能海外技术流机场，支持免费试用与优惠套餐，全面解锁流媒体及 AI 服务，全球首家采用 **QUIC 协议**。
+```powershell
+rustup target add x86_64-pc-windows-msvc
+```
 
-🎁 使用 **Clash Verge 专属邀请链接** 注册即送 **3 天免费试用**，每日 **1GB 流量**：👉 [点此注册](https://verge.dginv.click/#/register?code=oaxsAGo6)
+## 本地开发运行
 
-#### **核心优势：**
-
-- 📱 自研 iOS 客户端（业内"唯一"）技术经得起考验，极大**持续研发**投入
-- 🧑‍💻 **12小时真人客服**(顺带解决 Clash Verge 使用问题)
-- 💰 优惠套餐每月**仅需 21 元，160G 流量，年付 8 折**
-- 🌍 海外团队，无跑路风险，高达 50% 返佣
-- ⚙️ **集群负载均衡**设计，**负载监控和随时扩容**，高速专线(兼容老客户端)，极低延迟，无视晚高峰，4K 秒开
-- ⚡ 全球首家**Quic 协议机场**，现已上线更快的 Quic 类协议(Clash Verge 客户端最佳搭配)
-- 🎬 解锁**流媒体及 主流 AI**
-
-🌐 官网：👉 [https://狗狗加速.com](https://verge.dginv.click/#/register?code=oaxsAGo6)
-
-### 🤖 [GPTKefu —— 与 Crisp 深度整合的 AI 智能客服平台](https://gptkefu.com)
-
-- 🧠 深度理解完整对话上下文 + 图片识别，自动给出专业、精准的回复，告别机械式客服。
-- ♾️ **不限回答数量**，无额度焦虑，区别于其他按条计费的 AI 客服产品。
-- 💬 售前咨询、售后服务、复杂问题解答，全场景轻松覆盖，真实用户案例已验证效果。
-- ⚡ 3 分钟极速接入，零门槛上手，即刻提升客服效率与客户满意度。
-- 🎁 高级套餐免费试用 14 天，先体验后付费：👉 [立即试用](https://gptkefu.com)
-- 📢 智能客服TG 频道：[@crisp_ai](https://t.me/crisp_ai)
-
----
-
-## Features
-
-- 基于性能强劲的 Rust 和 Tauri 2 框架
-- 内置[Clash.Meta(mihomo)](https://github.com/MetaCubeX/mihomo)内核，并支持切换 `Alpha` 版本内核。
-- 简洁美观的用户界面，支持自定义主题颜色、代理组/托盘图标以及 `CSS Injection`。
-- 配置文件管理和增强（Merge 和 Script），配置文件语法提示。
-- 系统代理和守卫、`TUN(虚拟网卡)` 模式。
-- 可视化节点和规则编辑
-- WebDav 配置备份和同步
-
-### FAQ
-
-Refer to [Doc FAQ Page](https://clash-verge-rev.github.io/faq/windows.html)
-
-### Donation
-
-[捐助Clash Verge Rev的开发](https://github.com/sponsors/clash-verge-rev)
-
-## Development
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
-
-To run the development server, execute the following commands after all prerequisites for **Tauri** are installed:
-
-```shell
-pnpm i
-pnpm run prebuild
+```powershell
 pnpm dev
 ```
 
-## Contributions
+开发模式会打开 Tauri 窗口，前端由 Vite 提供。
 
-Issue and PR welcome!
+## 本地打包 Windows 安装包
 
-## Acknowledgement
+```powershell
+pnpm build --target x86_64-pc-windows-msvc
+```
 
-Clash Verge rev was based on or inspired by these projects and so on:
+常见产物路径：
 
-- [zzzgydi/clash-verge](https://github.com/zzzgydi/clash-verge): A Clash GUI based on tauri. Supports Windows, macOS and Linux.
-- [tauri-apps/tauri](https://github.com/tauri-apps/tauri): Build smaller, faster, and more secure desktop applications with a web frontend.
-- [Dreamacro/clash](https://github.com/Dreamacro/clash): A rule-based tunnel in Go.
-- [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo): A rule-based tunnel in Go.
-- [Fndroid/clash_for_windows_pkg](https://github.com/Fndroid/clash_for_windows_pkg): A Windows/macOS GUI based on Clash.
-- [vitejs/vite](https://github.com/vitejs/vite): Next generation frontend tooling. It's fast!
+```text
+target/release/bundle/nsis/神仙云_2.4.8_x64-setup.exe
+target/release/shenxianyun.exe
+```
 
-## License
+如果只想检查前端类型和构建：
 
-GPL-3.0 License. See [License here](./LICENSE) for details.
+```powershell
+pnpm web:build
+```
+
+## GitHub Actions 编译
+
+仓库可使用 Windows runner 编译 Windows 安装包。推荐工作流：
+
+1. checkout
+2. setup Node 24
+3. setup pnpm
+4. setup Rust stable
+5. `pnpm install`
+6. `pnpm build --target x86_64-pc-windows-msvc`
+7. 上传 `target/release/bundle/nsis/*.exe`
+
+注意：私有仓库 Actions 受 GitHub 账号计费限制影响。如果提示 billing 或 spending limit，需要到 GitHub Billing 页面处理，或者本地编译。
+
+## 后台接口
+
+默认后台地址在 `src/pages/home.tsx`：
+
+```ts
+const SUBSCRIPTION_BASE_URL = 'https://sub.jc116.com'
+```
+
+客户端使用的接口：
+
+```text
+GET /api/verify/<code>
+GET /api/update-state/<code>
+GET /api/client/heartbeat/<code>
+GET /api/client/offline/<code>
+GET /sub/<code>
+```
+
+手动导入提取码时会带：
+
+```text
+?import=1&client_id=<客户端ID>
+```
+
+后台据此只记录一次首次导入次数。
+
+## 常见修改点
+
+- 改后台域名：`src/pages/home.tsx` 的 `SUBSCRIPTION_BASE_URL`。
+- 改应用名称和版本：`package.json`、`src-tauri/tauri.conf.json`。
+- 改窗口大小：`src-tauri/src/utils/resolve/window.rs`。
+- 改首页 UI：`src/pages/home.tsx`。
+- 改代理页面 UI：`src/pages/proxies.tsx`。
+- 改深度链接导入：`src-tauri/src/utils/resolve/scheme.rs`。
+- 改托盘菜单：`src-tauri/src/core/tray/`。
+- 改直连规则：`src-tauri/src/config/config.rs`。
+
+## 发布前检查
+
+```powershell
+pnpm web:build
+pnpm build --target x86_64-pc-windows-msvc
+```
+
+打包后安装一次，检查：
+
+- 首次输入提取码可导入订阅。
+- 点击启动后系统代理状态正确。
+- 规则/全局模式可切换。
+- 代理页面能选择节点。
+- 后台能看到在线客户端。
+- 停止后后台状态变离线。
+- 网页 `一键导入神仙云` 能打开客户端。
+
+## 数据和配置位置
+
+当前项目已把应用目录和管道名改成神仙云相关名称，避免和原 Clash Verge 共用配置目录。
+
+如需要清理本地配置，可检查 Windows 用户目录下的应用数据目录。删除前先备份用户订阅和设置。

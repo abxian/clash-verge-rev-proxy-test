@@ -165,6 +165,20 @@ jobs:
         if: github.event.inputs[matrix.enabled_input] == 'true'
         run: pnpm tauri build --target ${{ matrix.target }} -b ${{ matrix.bundle }}
 
+      - name: Verify macOS bundle
+        if: matrix.os == 'macos-latest' && github.event.inputs[matrix.enabled_input] == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name '*.app' -print -quit)"
+          DMG_PATH="$(find "target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -name '*.dmg' -print -quit)"
+          test -n "$APP_PATH"
+          test -n "$DMG_PATH"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          hdiutil verify "$DMG_PATH"
+          echo "Verified macOS app: $APP_PATH"
+          echo "Verified macOS dmg: $DMG_PATH"
+
       - name: Upload bundle
         if: github.event.inputs[matrix.enabled_input] == 'true'
         uses: actions/upload-artifact@v4

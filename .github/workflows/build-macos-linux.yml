@@ -50,14 +50,14 @@ jobs:
             id: macos-aarch64
             os: macos-latest
             target: aarch64-apple-darwin
-            bundle: dmg
+            bundle: app,dmg
             enabled_input: build_macos_aarch64
             artifact_glob: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           - name: macOS Intel
             id: macos-x64
             os: macos-latest
             target: x86_64-apple-darwin
-            bundle: dmg
+            bundle: app,dmg
             enabled_input: build_macos_x64
             artifact_glob: target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
           - name: Linux x64
@@ -170,10 +170,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          APP_PATH="$(find "target/${{ matrix.target }}/release/bundle/macos" -maxdepth 1 -name '*.app' -print -quit)"
-          DMG_PATH="$(find "target/${{ matrix.target }}/release/bundle/dmg" -maxdepth 1 -name '*.dmg' -print -quit)"
-          test -n "$APP_PATH"
-          test -n "$DMG_PATH"
+          BUNDLE_DIR="target/${{ matrix.target }}/release/bundle"
+          echo "Bundle output:"
+          find "$BUNDLE_DIR" -maxdepth 3 -print
+          APP_PATH="$(find "$BUNDLE_DIR" -maxdepth 3 -name '*.app' -print -quit)"
+          DMG_PATH="$(find "$BUNDLE_DIR" -maxdepth 3 -name '*.dmg' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::macOS .app bundle not found in $BUNDLE_DIR"
+            exit 1
+          fi
+          if [ -z "$DMG_PATH" ]; then
+            echo "::error::macOS .dmg bundle not found in $BUNDLE_DIR"
+            exit 1
+          fi
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           hdiutil verify "$DMG_PATH"
           echo "Verified macOS app: $APP_PATH"

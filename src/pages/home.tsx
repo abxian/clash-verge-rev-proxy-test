@@ -53,7 +53,6 @@ import delayManager from '@/services/delay'
 
 const SUBSCRIPTION_BASE_URL = 'https://sub.jc116.com'
 const CODE_STORAGE_KEY = 'shenxianyun.accessCode'
-const CODE_NAME_STORAGE_KEY = 'shenxianyun.accessName'
 const CODE_EXPIRES_STORAGE_KEY = 'shenxianyun.accessExpiresAt'
 const CODE_UPDATE_VERSION_STORAGE_KEY = 'shenxianyun.updateVersion'
 const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
@@ -211,17 +210,12 @@ const HomePage = () => {
     onError: () => setStatus('节点切换失败'),
   })
 
-  const [code, setCode] = useState(
-    () => localStorage.getItem(CODE_STORAGE_KEY) || '',
-  )
+  const [code, setCode] = useState('')
   const [savedCode, setSavedCode] = useState(
     () => localStorage.getItem(CODE_STORAGE_KEY) || '',
   )
   const [expiresAt, setExpiresAt] = useState(
     () => localStorage.getItem(CODE_EXPIRES_STORAGE_KEY) || '',
-  )
-  const [accessName, setAccessName] = useState(
-    () => localStorage.getItem(CODE_NAME_STORAGE_KEY) || '',
   )
   const [status, setStatus] = useState(
     savedCode ? '提取码已保存，会自动检查订阅更新。' : '',
@@ -377,14 +371,12 @@ const HomePage = () => {
         }
 
         localStorage.setItem(CODE_STORAGE_KEY, value)
-        localStorage.setItem(CODE_NAME_STORAGE_KEY, data.name || value)
         localStorage.setItem(CODE_EXPIRES_STORAGE_KEY, data.expires_at || '')
         localStorage.setItem(
           CODE_UPDATE_VERSION_STORAGE_KEY,
           String(data.update_version || 0),
         )
         setSavedCode(value)
-        setAccessName(data.name || value)
         setExpiresAt(data.expires_at || '')
         await mutateProfiles()
         await refreshAll()
@@ -412,7 +404,7 @@ const HomePage = () => {
     try {
       const data = await activateCode(value)
       setStatus(
-        `${isSwitchingCode ? '提取码已切换' : '订阅已导入'}：${data.name || value}${
+        `${isSwitchingCode ? '提取码已切换' : '订阅已导入'}${
           data.expires_at ? `，到期 ${data.expires_at}` : ''
         }`,
       )
@@ -844,7 +836,7 @@ const HomePage = () => {
                   <Typography
                     sx={{ fontSize: 13, color: 'rgba(36,46,66,.66)' }}
                   >
-                    {accessName || activeProfileName}
+                    {savedCode ? '提取码已绑定' : activeProfileName}
                   </Typography>
                   {expiresAt && (
                     <Chip
@@ -940,8 +932,12 @@ const HomePage = () => {
                       sx={fieldSx}
                       value={code}
                       onChange={(event) => setCode(event.target.value)}
-                      label="提取码"
-                      placeholder="输入后台生成的提取码"
+                      label={savedCode ? '切换提取码' : '提取码'}
+                      placeholder={
+                        savedCode
+                          ? '输入新的提取码后切换'
+                          : '输入后台生成的提取码'
+                      }
                       slotProps={{
                         input: {
                           sx: fieldSx,
@@ -971,7 +967,7 @@ const HomePage = () => {
                         '&:hover': { bgcolor: '#167ce3' },
                       }}
                     >
-                      {isSwitchingCode ? '切换' : savedCode ? '重订阅' : '导入'}
+                      {savedCode ? '切换提取码' : '导入订阅'}
                     </Button>
                   </Stack>
 

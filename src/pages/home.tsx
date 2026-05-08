@@ -14,6 +14,10 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -27,7 +31,7 @@ import {
 } from '@mui/material'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { BasePage } from '@/components/base'
 import { useProfiles } from '@/hooks/use-profiles'
@@ -220,11 +224,11 @@ const HomePage = () => {
   const [status, setStatus] = useState(
     savedCode ? '提取码已保存，会自动检查订阅更新。' : '',
   )
+  const [codeDialogOpen, setCodeDialogOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const autoImportCodeRef = useRef('')
 
   const primaryGroup = useMemo(
     () => pickPrimaryGroup((proxies?.groups || []) as IProxyGroupItem[]),
@@ -246,7 +250,7 @@ const HomePage = () => {
   const actualRunning = tunOn || systemProxyOn || systemProxyConfigOn
   const running = actualRunning
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
-  const currentCode = savedCode || code.trim()
+  const currentCode = savedCode
   const isSwitchingCode = Boolean(
     savedCode && code.trim() && code.trim() !== savedCode,
   )
@@ -302,7 +306,7 @@ const HomePage = () => {
 
   const sendClientPresence = useCallback(
     async (online: boolean) => {
-      const value = savedCode || code.trim()
+      const value = savedCode
       if (!value) return
       const endpoint = online ? 'heartbeat' : 'offline'
       const params = new URLSearchParams({
@@ -324,7 +328,7 @@ const HomePage = () => {
         },
       ).catch(() => undefined)
     },
-    [code, savedCode],
+    [savedCode],
   )
 
   const activateCode = async (value: string, retryCount = 3) => {
@@ -403,6 +407,8 @@ const HomePage = () => {
     setStatus(isSwitchingCode ? '正在切换提取码...' : '正在验证提取码...')
     try {
       const data = await activateCode(value)
+      setCode('')
+      setCodeDialogOpen(false)
       setStatus(
         `${isSwitchingCode ? '提取码已切换' : '订阅已导入'}${
           data.expires_at ? `，到期 ${data.expires_at}` : ''
@@ -431,21 +437,6 @@ const HomePage = () => {
       sendClientPresence(false).catch(() => undefined)
     }
   }, [running, savedCode, sendClientPresence])
-
-  useEffect(() => {
-    const value = code.trim()
-    if (!value || value === savedCode || busy || running) return
-    if (value.length < 2 || autoImportCodeRef.current === value) return
-
-    const timer = window.setTimeout(() => {
-      autoImportCodeRef.current = value
-      importByCode().catch(() => {
-        autoImportCodeRef.current = ''
-      })
-    }, 1200)
-
-    return () => window.clearTimeout(timer)
-  }, [busy, code, importByCode, running, savedCode])
 
   useEffect(() => {
     if (!savedCode) return
@@ -552,13 +543,9 @@ const HomePage = () => {
       }
 
       if (!current?.uid) {
-        const value = code.trim()
-        if (!value) {
-          setStatus('请先输入提取码并导入订阅')
-          return
-        }
-        setStatus('正在导入订阅...')
-        await activateCode(value)
+        setStatus('请先导入订阅')
+        setCodeDialogOpen(true)
+        return
       }
 
       if (!currentCode) {
@@ -925,42 +912,22 @@ const HomePage = () => {
                     </Button>
                   </Stack>
 
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      sx={fieldSx}
-                      value={code}
-                      onChange={(event) => setCode(event.target.value)}
-                      label={savedCode ? '切换提取码' : '提取码'}
-                      placeholder={
-                        savedCode
-                          ? '输入新的提取码后切换'
-                          : '输入后台生成的提取码'
-                      }
-                      slotProps={{
-                        input: {
-                          sx: fieldSx,
-                          startAdornment: (
-                            <KeyRounded
-                              sx={{ mr: 1, color: 'rgba(0,245,212,.82)' }}
-                            />
-                          ),
-                        },
-                        inputLabel: {
-                          sx: {
-                            color: 'rgba(36,46,66,.66)',
-                            '&.Mui-focused': { color: '#1c8dff' },
-                          },
-                        },
-                      }}
-                    />
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    useFlexGap
+                    sx={{ flexWrap: 'wrap' }}
+                  >
                     <Button
                       variant="contained"
+                      startIcon={<KeyRounded />}
                       disabled={busy}
-                      onClick={importByCode}
+                      onClick={() => {
+                        setCode('')
+                        setCodeDialogOpen(true)
+                      }}
                       sx={{
-                        minWidth: 112,
+                        flex: '1 1 132px',
                         bgcolor: '#1c8dff',
                         color: '#fff',
                         fontWeight: 800,
@@ -969,14 +936,6 @@ const HomePage = () => {
                     >
                       {savedCode ? '切换提取码' : '导入订阅'}
                     </Button>
-                  </Stack>
-
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    useFlexGap
-                    sx={{ flexWrap: 'wrap' }}
-                  >
                     {!isTunModeAvailable && (
                       <Button
                         variant="outlined"
@@ -1076,6 +1035,99 @@ const HomePage = () => {
               </Box>
             </Stack>
           </Paper>
+          <Dialog
+            open={codeDialogOpen}
+            onClose={() => {
+              if (busy) return
+              setCode('')
+              setCodeDialogOpen(false)
+            }}
+            fullWidth
+            maxWidth="xs"
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: '18px',
+                  border: '1px solid rgba(70,100,145,.16)',
+                  background:
+                    'linear-gradient(145deg, rgba(255,255,255,.98), rgba(244,249,255,.96))',
+                },
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 900, pb: 0.5 }}>
+              {savedCode ? '切换提取码' : '导入订阅'}
+            </DialogTitle>
+            <DialogContent sx={{ pt: 1.5 }}>
+              <Typography
+                sx={{
+                  mb: 1.5,
+                  fontSize: 13,
+                  color: 'rgba(36,46,66,.66)',
+                }}
+              >
+                {savedCode
+                  ? '输入新的提取码后会替换当前订阅。'
+                  : '输入后台生成的提取码，客户端会自动获取订阅。'}
+              </Typography>
+              <TextField
+                autoFocus
+                fullWidth
+                size="small"
+                sx={fieldSx}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && code.trim() && !busy) {
+                    importByCode()
+                  }
+                }}
+                label="提取码"
+                placeholder="请输入提取码"
+                disabled={busy}
+                slotProps={{
+                  input: {
+                    sx: fieldSx,
+                    startAdornment: (
+                      <KeyRounded
+                        sx={{ mr: 1, color: 'rgba(28,141,255,.78)' }}
+                      />
+                    ),
+                  },
+                  inputLabel: {
+                    sx: {
+                      color: 'rgba(36,46,66,.66)',
+                      '&.Mui-focused': { color: '#1c8dff' },
+                    },
+                  },
+                }}
+              />
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2.5 }}>
+              <Button
+                disabled={busy}
+                onClick={() => {
+                  setCode('')
+                  setCodeDialogOpen(false)
+                }}
+              >
+                取消
+              </Button>
+              <Button
+                variant="contained"
+                disabled={busy || !code.trim()}
+                onClick={importByCode}
+                sx={{
+                  minWidth: 104,
+                  bgcolor: '#1c8dff',
+                  fontWeight: 800,
+                  '&:hover': { bgcolor: '#167ce3' },
+                }}
+              >
+                {busy ? '处理中' : savedCode ? '确认切换' : '确认导入'}
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Stack>
       </Box>
     </BasePage>

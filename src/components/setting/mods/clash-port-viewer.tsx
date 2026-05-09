@@ -37,15 +37,15 @@ export const ClashPortViewer = forwardRef<ClashPortViewerRef>((_, ref) => {
 
   // Mixed Port
   const [mixedPort, setMixedPort] = useState(
-    verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 7897,
+    verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 17897,
   )
 
   // 其他端口状态
-  const [socksPort, setSocksPort] = useState(verge?.verge_socks_port ?? 7898)
+  const [socksPort, setSocksPort] = useState(verge?.verge_socks_port ?? 17898)
   const [socksEnabled, setSocksEnabled] = useState(
     verge?.verge_socks_enabled ?? false,
   )
-  const [httpPort, setHttpPort] = useState(verge?.verge_port ?? 7899)
+  const [httpPort, setHttpPort] = useState(verge?.verge_port ?? 17899)
   const [httpEnabled, setHttpEnabled] = useState(
     verge?.verge_http_enabled ?? false,
   )
@@ -82,10 +82,10 @@ export const ClashPortViewer = forwardRef<ClashPortViewerRef>((_, ref) => {
   useImperativeHandle(ref, () => ({
     open: () => {
       originalPortsRef.current = {
-        mixedPort: verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 7897,
-        socksPort: verge?.verge_socks_port ?? 7898,
+        mixedPort: verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 17897,
+        socksPort: verge?.verge_socks_port ?? 17898,
         socksEnabled: verge?.verge_socks_enabled ?? false,
-        httpPort: verge?.verge_port ?? 7899,
+        httpPort: verge?.verge_port ?? 17899,
         httpEnabled: verge?.verge_http_enabled ?? false,
         redirPort: verge?.verge_redir_port ?? 7895,
         redirEnabled: verge?.verge_redir_enabled ?? false,
@@ -168,11 +168,11 @@ export const ClashPortViewer = forwardRef<ClashPortViewerRef>((_, ref) => {
             setTproxyEnabled(original.tproxyEnabled)
           } else {
             setMixedPort(
-              verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 7897,
+              verge?.verge_mixed_port ?? clashInfo?.mixed_port ?? 17897,
             )
-            setSocksPort(verge?.verge_socks_port ?? 7898)
+            setSocksPort(verge?.verge_socks_port ?? 17898)
             setSocksEnabled(verge?.verge_socks_enabled ?? false)
-            setHttpPort(verge?.verge_port ?? 7899)
+            setHttpPort(verge?.verge_port ?? 17899)
             setHttpEnabled(verge?.verge_http_enabled ?? false)
             setRedirPort(verge?.verge_redir_port ?? 7895)
             setRedirEnabled(verge?.verge_redir_enabled ?? false)

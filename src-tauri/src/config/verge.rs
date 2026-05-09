@@ -1,6 +1,7 @@
-use crate::config::Config;
 use crate::{
+    config::Config,
     config::{DEFAULT_PAC, deserialize_encrypted, serialize_encrypted},
+    constants::network::ports,
     utils::{dirs, help},
 };
 use anyhow::Result;
@@ -320,6 +321,19 @@ impl IVerge {
         }
 
         // 修正后保存配置
+        if config.verge_mixed_port == Some(7897) {
+            config.verge_mixed_port = Some(ports::DEFAULT_MIXED);
+            needs_fix = true;
+        }
+        if config.verge_socks_port == Some(7898) {
+            config.verge_socks_port = Some(ports::DEFAULT_SOCKS);
+            needs_fix = true;
+        }
+        if config.verge_port == Some(7899) {
+            config.verge_port = Some(ports::DEFAULT_HTTP);
+            needs_fix = true;
+        }
+
         if needs_fix {
             logging!(info, Type::Config, "正在保存修正后的配置文件...");
             help::save_yaml(&config_path, &config, Some("# Clash Verge Config")).await?;
@@ -424,10 +438,10 @@ impl IVerge {
             verge_tproxy_port: Some(7896),
             #[cfg(target_os = "linux")]
             verge_tproxy_enabled: Some(false),
-            verge_mixed_port: Some(7897),
-            verge_socks_port: Some(7898),
+            verge_mixed_port: Some(ports::DEFAULT_MIXED),
+            verge_socks_port: Some(ports::DEFAULT_SOCKS),
             verge_socks_enabled: Some(false),
-            verge_port: Some(7899),
+            verge_port: Some(ports::DEFAULT_HTTP),
             verge_http_enabled: Some(false),
             enable_proxy_guard: Some(true),
             enable_bypass_check: Some(true),

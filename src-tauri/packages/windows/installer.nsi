@@ -824,6 +824,7 @@ Section Install
   !endif
 
   !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  !insertmacro RemoveVergeService
   !insertmacro KillLegacySidecarProcesses
 
   ; Copy main executable

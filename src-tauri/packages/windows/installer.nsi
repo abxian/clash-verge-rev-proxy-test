@@ -573,6 +573,42 @@ FunctionEnd
   ${EndIf}
 !macroend
 
+!macro KillShenxianyunSidecarProcesses
+  ; The core process can outlive the UI during upgrades and keep bundled files locked.
+  ; Stop only Shenxianyun-owned sidecars so Clash Verge can still run independently.
+  !if "${INSTALLMODE}" == "currentUser"
+    nsis_tauri_utils::FindProcessCurrentUser "shenxianyun-mihomo.exe"
+  !else
+    nsis_tauri_utils::FindProcess "shenxianyun-mihomo.exe"
+  !endif
+  Pop $R0
+  ${If} $R0 = 0
+    DetailPrint "Stopping ${PRODUCTNAME} core: shenxianyun-mihomo.exe"
+    !if "${INSTALLMODE}" == "currentUser"
+      nsis_tauri_utils::KillProcessCurrentUser "shenxianyun-mihomo.exe"
+    !else
+      nsis_tauri_utils::KillProcess "shenxianyun-mihomo.exe"
+    !endif
+    Sleep 500
+  ${EndIf}
+
+  !if "${INSTALLMODE}" == "currentUser"
+    nsis_tauri_utils::FindProcessCurrentUser "shenxianyun-mihomo-alpha.exe"
+  !else
+    nsis_tauri_utils::FindProcess "shenxianyun-mihomo-alpha.exe"
+  !endif
+  Pop $R0
+  ${If} $R0 = 0
+    DetailPrint "Stopping ${PRODUCTNAME} core: shenxianyun-mihomo-alpha.exe"
+    !if "${INSTALLMODE}" == "currentUser"
+      nsis_tauri_utils::KillProcessCurrentUser "shenxianyun-mihomo-alpha.exe"
+    !else
+      nsis_tauri_utils::KillProcess "shenxianyun-mihomo-alpha.exe"
+    !endif
+    Sleep 500
+  ${EndIf}
+!macroend
+
 !macro StartVergeService
   ; Check if the service exists
   SimpleSC::ExistsService "clash_verge_service"
@@ -825,6 +861,7 @@ Section Install
 
   !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
   !insertmacro RemoveVergeService
+  !insertmacro KillShenxianyunSidecarProcesses
   !insertmacro KillLegacySidecarProcesses
 
   ; Copy main executable

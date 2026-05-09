@@ -40,10 +40,11 @@ import { invoke } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
 import yaml from 'js-yaml'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { BasePage } from '@/components/base'
 import { useClash } from '@/hooks/use-clash'
+import { useConnectionData } from '@/hooks/use-connection-data'
 import { useProfiles } from '@/hooks/use-profiles'
 import { useProxySelection } from '@/hooks/use-proxy-selection'
 import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
@@ -73,6 +74,7 @@ const CODE_EXPIRES_STORAGE_KEY = 'shenxianyun.accessExpiresAt'
 const CODE_UPDATE_VERSION_STORAGE_KEY = 'shenxianyun.updateVersion'
 const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
 const DELAY_TIMEOUT = 5000
+const TRAFFIC_REPORT_INTERVAL_MS = 30_000
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
 const fieldSx = {
   '& .MuiInputLabel-root': {
@@ -295,6 +297,7 @@ const delayRank = (proxy: IProxyItem, groupName = '') => {
 
 const HomePage = () => {
   const { verge, patchVerge } = useVerge()
+  const { response: connectionResponse } = useConnectionData()
   const { patchClash } = useClash()
   const { profiles, current, mutateProfiles } = useProfiles()
   const { proxies, clashConfig, refreshAll, refreshClashConfig, refreshProxy } =
@@ -334,6 +337,8 @@ const HomePage = () => {
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
   const [nowMs, setNowMs] = useState(() => Date.now())
+  const trafficTotalsRef = useRef({ upload: 0, download: 0 })
+  const lastReportedTrafficRef = useRef({ upload: 0, download: 0 })
 
   const primaryGroup = useMemo(
     () => pickPrimaryGroup((proxies?.groups || []) as IProxyGroupItem[]),
@@ -460,6 +465,52 @@ const HomePage = () => {
     [savedCode],
   )
 
+  const reportClientTraffic = useCallback(async () => {
+    const value = savedCode
+    if (!value || !running) return
+
+    const current = trafficTotalsRef.current
+    const previous = lastReportedTrafficRef.current
+    if (
+      current.upload < previous.upload ||
+      current.download < previous.download
+    ) {
+      lastReportedTrafficRef.current = current
+      return
+    }
+
+    const uploadDelta = current.upload - previous.upload
+    const downloadDelta = current.download - previous.download
+    if (uploadDelta <= 0 && downloadDelta <= 0) return
+
+    await tauriFetch(
+      `${SUBSCRIPTION_BASE_URL}/api/client/traffic/${encodeURIComponent(value)}`,
+      {
+        method: 'POST',
+        connectTimeout: 5000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': CLIENT_UA,
+          'X-Client-Id': getClientId(),
+          'X-Client-Type': 'shenxianyun-windows',
+        },
+        body: JSON.stringify({
+          client_id: getClientId(),
+          platform: 'Windows电脑',
+          app_name: '神仙云桌面端',
+          app_version: '2.4.8',
+          device_name: navigator.userAgent,
+          upload_bytes: uploadDelta,
+          download_bytes: downloadDelta,
+        }),
+      },
+    )
+      .then(() => {
+        lastReportedTrafficRef.current = current
+      })
+      .catch(() => undefined)
+  }, [running, savedCode])
+
   const activateCode = async (value: string, retryCount = 3) => {
     let lastError: unknown
     for (let attempt = 1; attempt <= retryCount; attempt += 1) {
@@ -566,6 +617,32 @@ const HomePage = () => {
       sendClientPresence(false).catch(() => undefined)
     }
   }, [running, savedCode, sendClientPresence])
+
+  useEffect(() => {
+    trafficTotalsRef.current = {
+      upload: connectionResponse.data?.uploadTotal ?? 0,
+      download: connectionResponse.data?.downloadTotal ?? 0,
+    }
+  }, [
+    connectionResponse.data?.downloadTotal,
+    connectionResponse.data?.uploadTotal,
+  ])
+
+  useEffect(() => {
+    if (!running || !savedCode) {
+      lastReportedTrafficRef.current = trafficTotalsRef.current
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      reportClientTraffic().catch(() => undefined)
+    }, TRAFFIC_REPORT_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(timer)
+      reportClientTraffic().catch(() => undefined)
+    }
+  }, [reportClientTraffic, running, savedCode])
 
   useEffect(() => {
     if (!savedCode) return

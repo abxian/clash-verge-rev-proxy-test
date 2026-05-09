@@ -370,8 +370,7 @@ pub fn init_scheme() -> Result<()> {
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     for (scheme, name) in [
-        ("Clash", "Clash Verge"),
-        ("clash-verge", "Clash Verge"),
+        ("shenxianyun", "神仙云"),
         ("shenxianyun", "Shenxianyun"),
     ] {
         let base = format!("Software\\Classes\\{scheme}");
@@ -414,7 +413,7 @@ pub const fn init_scheme() -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-const DEEP_LINK_SCHEMES: &[&str] = &["clash", "clash-verge", "shenxianyun"];
+const DEEP_LINK_SCHEMES: &[&str] = &["shenxianyun"];
 
 pub async fn startup_script() -> Result<()> {
     let app_handle = handle::Handle::app_handle();

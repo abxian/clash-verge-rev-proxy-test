@@ -357,8 +357,19 @@ const HomePage = () => {
   const selectedNode = primaryGroup?.now || ''
   const mode = (clashConfig?.mode || 'rule').toLowerCase()
   const tunOn = verge?.enable_tun_mode || false
-  const actualRunning = tunOn || systemProxyOn || systemProxyConfigOn
-  const running = actualRunning
+  const proxyStateMismatch = systemProxyConfigOn && !systemProxyOn
+  const running = tunOn || systemProxyOn
+  const systemProxyChip: {
+    label: string
+    color: 'success' | 'warning' | 'default'
+    variant: 'filled' | 'outlined'
+  } = tunOn
+    ? { label: 'TUN 已开', color: 'success', variant: 'filled' }
+    : systemProxyOn
+      ? { label: '系统代理已开', color: 'success', variant: 'filled' }
+      : proxyStateMismatch
+        ? { label: '系统代理异常', color: 'warning', variant: 'filled' }
+        : { label: '系统代理关闭', color: 'default', variant: 'outlined' }
   const activeProfileName = current?.name || profiles?.current || '未导入订阅'
   const currentCode = savedCode
   const isSwitchingCode = Boolean(
@@ -783,6 +794,9 @@ const HomePage = () => {
       }
 
       setStatus('正在启动...')
+      if (proxyStateMismatch) {
+        await toggleSystemProxy(false).catch(() => {})
+      }
       await startCore().catch(() => restartCore())
       await mutateSystemState()
 
@@ -792,6 +806,7 @@ const HomePage = () => {
         setStatus('已启动 TUN 模式')
       } else {
         await toggleSystemProxy(true)
+        await invalidateProxyState()
         setStatus('已启动系统代理')
       }
       await invalidateProxyState()
@@ -1076,9 +1091,9 @@ const HomePage = () => {
               <Chip
                 size="small"
                 icon={<LanRounded />}
-                color={tunOn ? 'success' : 'default'}
-                variant={tunOn ? 'filled' : 'outlined'}
-                label={tunOn ? 'TUN' : '系统代理'}
+                color={systemProxyChip.color}
+                variant={systemProxyChip.variant}
+                label={systemProxyChip.label}
               />
             </Stack>
           </Stack>

@@ -57,9 +57,20 @@ export const useSystemProxyState = () => {
       while (pendingRef.current !== null) {
         const target = pendingRef.current
         pendingRef.current = null
-        await patchVerge({ enable_system_proxy: target })
-        if (!target && verge?.auto_close_connection) {
-          await closeAllConnections().catch(() => {})
+        try {
+          await patchVerge({ enable_system_proxy: target })
+          if (!target && verge?.auto_close_connection) {
+            await closeAllConnections().catch(() => {})
+          }
+        } catch (error) {
+          mutateVerge(
+            (prev) => (prev ? { ...prev, enable_system_proxy: false } : prev),
+            false,
+          )
+          if (target) {
+            await patchVerge({ enable_system_proxy: false }).catch(() => {})
+          }
+          throw error
         }
       }
     } finally {

@@ -115,7 +115,7 @@ const SettingClash = ({ onError }: Props) => {
         }
       >
         <GuardState
-          value={allowLan ?? false}
+          value={allowLan ?? true}
           valueProps="checked"
           onCatch={onError}
           onFormat={onSwitchFormat}

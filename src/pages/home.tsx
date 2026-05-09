@@ -36,6 +36,7 @@ import {
 import { invoke } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
+import yaml from 'js-yaml'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { BasePage } from '@/components/base'
@@ -53,7 +54,9 @@ import {
   openWebUrl,
   patchClashMode,
   patchProfilesConfig,
+  readProfileFile,
   restartCore,
+  saveProfileFile,
   startCore,
   stopCore,
   deleteProfile,
@@ -143,6 +146,12 @@ type UpdateStateResponse = {
   message?: string
 }
 
+type RuleSnapshot = {
+  rules?: unknown
+  ruleProviders?: unknown
+  subRules?: unknown
+}
+
 class AccessCodeStateError extends Error {
   constructor(
     message: string,
@@ -156,6 +165,50 @@ const parseExpireTime = (value: string) => {
   if (!value) return Number.POSITIVE_INFINITY
   const time = Date.parse(value.replace(' ', 'T'))
   return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
+}
+
+const readRuleSnapshot = async (
+  profileUid?: string,
+): Promise<RuleSnapshot | null> => {
+  if (!profileUid) return null
+
+  try {
+    const content = await readProfileFile(profileUid)
+    const data = yaml.load(content) as Record<string, unknown> | null
+    if (!data || typeof data !== 'object') return null
+
+    const snapshot: RuleSnapshot = {}
+    if (Array.isArray(data.rules)) snapshot.rules = data.rules
+    if (data['rule-providers'] && typeof data['rule-providers'] === 'object') {
+      snapshot.ruleProviders = data['rule-providers']
+    }
+    if (data['sub-rules'] && typeof data['sub-rules'] === 'object') {
+      snapshot.subRules = data['sub-rules']
+    }
+
+    return Object.keys(snapshot).length > 0 ? snapshot : null
+  } catch {
+    return null
+  }
+}
+
+const restoreRuleSnapshot = async (
+  profileUid: string | undefined,
+  snapshot: RuleSnapshot | null,
+) => {
+  if (!profileUid || !snapshot) return
+
+  const content = await readProfileFile(profileUid)
+  const data = yaml.load(content) as Record<string, unknown> | null
+  if (!data || typeof data !== 'object') return
+
+  if (snapshot.rules !== undefined) data.rules = snapshot.rules
+  if (snapshot.ruleProviders !== undefined) {
+    data['rule-providers'] = snapshot.ruleProviders
+  }
+  if (snapshot.subRules !== undefined) data['sub-rules'] = snapshot.subRules
+
+  await saveProfileFile(profileUid, yaml.dump(data, { lineWidth: -1 }))
 }
 
 const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
@@ -316,6 +369,15 @@ const HomePage = () => {
     [],
   )
 
+  const updateCurrentProfileKeepingRules = useCallback(async () => {
+    const profileUid = current?.uid
+    if (!profileUid) return
+
+    const ruleSnapshot = await readRuleSnapshot(profileUid)
+    await updateProfile(profileUid, { with_proxy: true })
+    await restoreRuleSnapshot(profileUid, ruleSnapshot)
+  }, [current?.uid])
+
   const sendClientPresence = useCallback(
     async (online: boolean) => {
       const value = savedCode
@@ -462,7 +524,7 @@ const HomePage = () => {
         )
         if (remoteVersion > localVersion && current?.uid) {
           setStatus('检测到后台推送，正在更新订阅...')
-          await updateProfile(current.uid, { with_proxy: true })
+          await updateCurrentProfileKeepingRules()
           localStorage.setItem(
             CODE_UPDATE_VERSION_STORAGE_KEY,
             String(remoteVersion),
@@ -514,6 +576,7 @@ const HomePage = () => {
     systemProxyOn,
     toggleSystemProxy,
     tunOn,
+    updateCurrentProfileKeepingRules,
     updateState,
   ])
 
@@ -525,10 +588,10 @@ const HomePage = () => {
     setBusy(true)
     setStatus('正在更新订阅...')
     try {
-      await updateProfile(current.uid, { with_proxy: true })
+      await updateCurrentProfileKeepingRules()
       await mutateProfiles()
       await refreshAll()
-      setStatus('订阅已更新')
+      setStatus('订阅已更新，同提取码规则已保留')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : String(error))
     } finally {

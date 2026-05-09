@@ -285,7 +285,7 @@ pub struct IVergeTheme {
 
 impl IVerge {
     /// 有效的clash核心名称
-    pub const VALID_CLASH_CORES: &'static [&'static str] = &["verge-mihomo", "verge-mihomo-alpha"];
+    pub const VALID_CLASH_CORES: &'static [&'static str] = &["shenxianyun-mihomo", "shenxianyun-mihomo-alpha"];
 
     /// 验证并修正配置文件中的clash_core值
     pub async fn validate_and_fix_config() -> Result<()> {
@@ -303,19 +303,19 @@ impl IVerge {
                 logging!(
                     warn,
                     Type::Config,
-                    "启动时发现无效的clash_core配置: '{}', 将自动修正为 'verge-mihomo'",
+                    "启动时发现无效的clash_core配置: '{}', 将自动修正为 'shenxianyun-mihomo'",
                     core
                 );
-                config.clash_core = Some("verge-mihomo".into());
+                config.clash_core = Some("shenxianyun-mihomo".into());
                 needs_fix = true;
             }
         } else {
             logging!(
                 info,
                 Type::Config,
-                "启动时发现未配置clash_core, 将设置为默认值 'verge-mihomo'"
+                "启动时发现未配置clash_core, 将设置为默认值 'shenxianyun-mihomo'"
             );
-            config.clash_core = Some("verge-mihomo".into());
+            config.clash_core = Some("shenxianyun-mihomo".into());
             needs_fix = true;
         }
 
@@ -352,7 +352,12 @@ impl IVerge {
     }
 
     pub fn get_valid_clash_core(&self) -> String {
-        self.clash_core.clone().unwrap_or_else(|| "verge-mihomo".into())
+        match self.clash_core.as_deref() {
+            Some("verge-mihomo") => "shenxianyun-mihomo".into(),
+            Some("verge-mihomo-alpha") => "shenxianyun-mihomo-alpha".into(),
+            Some(core) => core.into(),
+            None => "shenxianyun-mihomo".into(),
+        }
     }
 
     pub async fn new() -> Self {
@@ -383,7 +388,7 @@ impl IVerge {
         Self {
             app_log_max_size: Some(128),
             app_log_max_count: Some(8),
-            clash_core: Some("verge-mihomo".into()),
+            clash_core: Some("shenxianyun-mihomo".into()),
             language: Some(clash_verge_i18n::system_language().into()),
             theme_mode: Some("system".into()),
             #[cfg(not(target_os = "windows"))]

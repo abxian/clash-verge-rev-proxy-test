@@ -539,6 +539,40 @@ FunctionEnd
   ; Do not kill service/core processes that may belong to another client.
 !macroend
 
+!macro KillLegacySidecarProcesses
+  ; One-time cleanup for old Shenxianyun builds that used Clash Verge sidecar names.
+  ; New builds use shenxianyun-mihomo*.exe to avoid conflicting with Clash Verge.
+  !if "${INSTALLMODE}" == "currentUser"
+    nsis_tauri_utils::FindProcessCurrentUser "verge-mihomo.exe"
+  !else
+    nsis_tauri_utils::FindProcess "verge-mihomo.exe"
+  !endif
+  Pop $R0
+  ${If} $R0 = 0
+    DetailPrint "Stopping legacy Shenxianyun core: verge-mihomo.exe"
+    !if "${INSTALLMODE}" == "currentUser"
+      nsis_tauri_utils::KillProcessCurrentUser "verge-mihomo.exe"
+    !else
+      nsis_tauri_utils::KillProcess "verge-mihomo.exe"
+    !endif
+  ${EndIf}
+
+  !if "${INSTALLMODE}" == "currentUser"
+    nsis_tauri_utils::FindProcessCurrentUser "verge-mihomo-alpha.exe"
+  !else
+    nsis_tauri_utils::FindProcess "verge-mihomo-alpha.exe"
+  !endif
+  Pop $R0
+  ${If} $R0 = 0
+    DetailPrint "Stopping legacy Shenxianyun core: verge-mihomo-alpha.exe"
+    !if "${INSTALLMODE}" == "currentUser"
+      nsis_tauri_utils::KillProcessCurrentUser "verge-mihomo-alpha.exe"
+    !else
+      nsis_tauri_utils::KillProcess "verge-mihomo-alpha.exe"
+    !endif
+  ${EndIf}
+!macroend
+
 !macro StartVergeService
   ; Check if the service exists
   SimpleSC::ExistsService "clash_verge_service"
@@ -790,6 +824,7 @@ Section Install
   !endif
 
   !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  !insertmacro KillLegacySidecarProcesses
 
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"

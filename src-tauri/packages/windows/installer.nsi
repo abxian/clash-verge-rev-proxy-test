@@ -535,85 +535,8 @@ FunctionEnd
 
 
 !macro CheckAllVergeProcesses
-  ; Check if clash-verge-service.exe is running
-  !if "${INSTALLMODE}" == "currentUser"
-    nsis_tauri_utils::FindProcessCurrentUser "clash-verge-service.exe"
-  !else
-    nsis_tauri_utils::FindProcess "clash-verge-service.exe"
-  !endif
-  Pop $R0
-  ${If} $R0 = 0
-    DetailPrint "Kill clash-verge-service.exe..."
-    !if "${INSTALLMODE}" == "currentUser"
-      nsis_tauri_utils::KillProcessCurrentUser "clash-verge-service.exe"
-    !else
-      nsis_tauri_utils::KillProcess "clash-verge-service.exe"
-    !endif
-  ${EndIf}
-
-  ; Check if verge-mihomo-alpha.exe is running
-  !if "${INSTALLMODE}" == "currentUser"
-    nsis_tauri_utils::FindProcessCurrentUser "verge-mihomo-alpha.exe"
-  !else
-    nsis_tauri_utils::FindProcess "verge-mihomo-alpha.exe"
-  !endif
-  Pop $R0
-  ${If} $R0 = 0
-    DetailPrint "Kill verge-mihomo-alpha.exe..."
-    !if "${INSTALLMODE}" == "currentUser"
-      nsis_tauri_utils::KillProcessCurrentUser "verge-mihomo-alpha.exe"
-    !else
-      nsis_tauri_utils::KillProcess "verge-mihomo-alpha.exe"
-    !endif
-  ${EndIf}
-
-  ; Check if verge-mihomo.exe is running
-  !if "${INSTALLMODE}" == "currentUser"
-    nsis_tauri_utils::FindProcessCurrentUser "verge-mihomo.exe"
-  !else
-    nsis_tauri_utils::FindProcess "verge-mihomo.exe"
-  !endif
-  Pop $R0
-  ${If} $R0 = 0
-    DetailPrint "Kill verge-mihomo.exe..."
-    !if "${INSTALLMODE}" == "currentUser"
-      nsis_tauri_utils::KillProcessCurrentUser "verge-mihomo.exe"
-    !else
-      nsis_tauri_utils::KillProcess "verge-mihomo.exe"
-    !endif
-  ${EndIf}
-
-  ; Check if clash-meta-alpha.exe is running
-  !if "${INSTALLMODE}" == "currentUser"
-    nsis_tauri_utils::FindProcessCurrentUser "clash-meta-alpha.exe"
-  !else
-    nsis_tauri_utils::FindProcess "clash-meta-alpha.exe"
-  !endif
-  Pop $R0
-  ${If} $R0 = 0
-    DetailPrint "Kill clash-meta-alpha.exe..."
-    !if "${INSTALLMODE}" == "currentUser"
-      nsis_tauri_utils::KillProcessCurrentUser "clash-meta-alpha.exe"
-    !else
-      nsis_tauri_utils::KillProcess "clash-meta-alpha.exe"
-    !endif
-  ${EndIf}
-
-  ; Check if clash-meta.exe is running
-  !if "${INSTALLMODE}" == "currentUser"
-    nsis_tauri_utils::FindProcessCurrentUser "clash-meta.exe"
-  !else
-    nsis_tauri_utils::FindProcess "clash-meta.exe"
-  !endif
-  Pop $R0
-  ${If} $R0 = 0
-    DetailPrint "Kill clash-meta.exe..."
-    !if "${INSTALLMODE}" == "currentUser"
-      nsis_tauri_utils::KillProcessCurrentUser "clash-meta.exe"
-    !else
-      nsis_tauri_utils::KillProcess "clash-meta.exe"
-    !endif
-  ${EndIf}
+  ; Keep installer behavior conservative: only the main app is checked later.
+  ; Do not kill service/core processes that may belong to another client.
 !macroend
 
 !macro StartVergeService
@@ -762,29 +685,11 @@ Section CheckAndInstallVSRuntime
   ${EndIf}
 
   ${If} $VC_RUNTIME_NEEDED != "1"
-    DetailPrint "已检测到匹配的 Visual C++ Redistributable，跳过安装"
-    Goto done_vc
-  ${EndIf}
-
-  DetailPrint "正在下载 Visual C++ Redistributable..."
-  nsisdl::download "$VC_REDIST_URL" "$TEMP\$VC_REDIST_EXE"
-  Pop $0
-  ${If} $0 == "success"
-    DetailPrint "正在安装 Visual C++ Redistributable..."
-    ExecWait '"$TEMP\$VC_REDIST_EXE" /quiet /norestart' $0
-    ${If} $0 == 0
-      DetailPrint "Visual C++ Redistributable 安装成功"
-    ${Else}
-      DetailPrint "Visual C++ Redistributable 安装失败"
-    ${EndIf}
-    Delete "$TEMP\$VC_REDIST_EXE"
+    DetailPrint "Visual C++ Redistributable is already available. Skip runtime install."
   ${Else}
-    DetailPrint "Visual C++ Redistributable 下载失败"
+    DetailPrint "Visual C++ Redistributable is missing. Skip silent download/install; install it manually if the app cannot start."
   ${EndIf}
-
-  done_vc:
 SectionEnd
-
 Section WebView2
   ; Check if Webview2 is already installed and skip this section
   ${If} ${RunningX64}
@@ -884,20 +789,7 @@ Section Install
     !insertmacro NSIS_HOOK_PREINSTALL
   !endif
 
-  nsExec::Exec 'netsh int tcp res'
-
   !insertmacro CheckIfAppIsRunning "${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
-
-  ; Ensure startup folders exist
-  CreateDirectory "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
-  DetailPrint "Ensured system startup folder exists"
-
-  SetShellVarContext current
-  StrCpy $0 "$SMPROGRAMS\Startup"
-  CreateDirectory "$0"
-  DetailPrint "Ensured user startup folder exists: $0"
-
-  !insertmacro SetContext
 
   ; Copy main executable
   File "${MAINBINARYSRCPATH}"

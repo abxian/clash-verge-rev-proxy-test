@@ -369,10 +369,7 @@ pub fn init_scheme() -> Result<()> {
     let app_exe = app_exe.to_string_lossy().into_owned();
 
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    for (scheme, name) in [
-        ("shenxianyun", "神仙云"),
-        ("shenxianyun", "Shenxianyun"),
-    ] {
+    for (scheme, name) in [("shenxianyun", "神仙云"), ("shenxianyun", "Shenxianyun")] {
         let base = format!("Software\\Classes\\{scheme}");
         let (scheme_key, _) = hkcu.create_subkey(&base)?;
         scheme_key.set_value("", &name)?;

@@ -2,10 +2,13 @@ import {
   BoltRounded,
   BuildRounded,
   CloudSyncRounded,
+  DnsRounded,
   KeyRounded,
   LanRounded,
   LanguageRounded,
   PowerSettingsNewRounded,
+  RuleRounded,
+  SettingsRounded,
   ShoppingCartRounded,
   SpeedRounded,
 } from '@mui/icons-material'
@@ -24,16 +27,19 @@ import {
   Paper,
   Select,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from '@mui/material'
+import { invoke } from '@tauri-apps/api/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { useLockFn } from 'ahooks'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { BasePage } from '@/components/base'
+import { useClash } from '@/hooks/use-clash'
 import { useProfiles } from '@/hooks/use-profiles'
 import { useProxySelection } from '@/hooks/use-proxy-selection'
 import { useSystemProxyState } from '@/hooks/use-system-proxy-state'
@@ -196,6 +202,7 @@ const delayRank = (proxy: IProxyItem, groupName = '') => {
 
 const HomePage = () => {
   const { verge, patchVerge } = useVerge()
+  const { patchClash } = useClash()
   const { profiles, current, mutateProfiles } = useProfiles()
   const { proxies, clashConfig, refreshAll, refreshClashConfig, refreshProxy } =
     useAppData()
@@ -225,6 +232,7 @@ const HomePage = () => {
     savedCode ? '提取码已保存，会自动检查订阅更新。' : '',
   )
   const [codeDialogOpen, setCodeDialogOpen] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
@@ -255,6 +263,10 @@ const HomePage = () => {
     savedCode && code.trim() && code.trim() !== savedCode,
   )
   const codeExpired = Boolean(expiresAt && nowMs > parseExpireTime(expiresAt))
+  const allowLanOn = clashConfig?.allowLan ?? true
+  const dnsOverwriteOn = verge?.enable_dns_settings ?? false
+  const proxyGuardOn = verge?.enable_proxy_guard ?? true
+  const powerHint = running ? '已启动，点击停止' : '还没有启动，点击启动'
   const verifyCode = async (input: string): Promise<ValidVerifyResponse> => {
     const params = new URLSearchParams({
       import: '1',
@@ -641,6 +653,45 @@ const HomePage = () => {
     }
   })
 
+  const toggleAllowLan = useLockFn(async (checked: boolean) => {
+    setBusy(true)
+    try {
+      await patchClash({ 'allow-lan': checked })
+      await refreshClashConfig()
+      setStatus(checked ? '局域网连接已开启' : '局域网连接已关闭')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
+  const toggleDnsOverwrite = useLockFn(async (checked: boolean) => {
+    setBusy(true)
+    try {
+      await patchVerge({ enable_dns_settings: checked })
+      await invoke('apply_dns_config', { apply: checked })
+      await refreshClashConfig()
+      setStatus(checked ? 'DNS 覆写已开启' : 'DNS 覆写已关闭')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
+  const toggleProxyGuard = useLockFn(async (checked: boolean) => {
+    setBusy(true)
+    try {
+      await patchVerge({ enable_proxy_guard: checked })
+      setStatus(checked ? '系统代理守护已开启' : '系统代理守护已关闭')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
   return (
     <BasePage
       full
@@ -817,9 +868,19 @@ const HomePage = () => {
                 </Box>
 
                 <Stack
-                  spacing={0.6}
+                  spacing={0.7}
                   sx={{ alignItems: 'center', width: '100%' }}
                 >
+                  <Chip
+                    size="small"
+                    color={running ? 'success' : 'default'}
+                    variant={running ? 'filled' : 'outlined'}
+                    label={powerHint}
+                    sx={{
+                      fontWeight: 800,
+                      bgcolor: running ? undefined : 'rgba(24,32,51,.04)',
+                    }}
+                  />
                   <Typography
                     sx={{ fontSize: 13, color: 'rgba(36,46,66,.66)' }}
                   >
@@ -1004,6 +1065,15 @@ const HomePage = () => {
                     </Button>
                     <Button
                       variant="outlined"
+                      startIcon={<SettingsRounded />}
+                      disabled={busy}
+                      onClick={() => setAdvancedOpen(true)}
+                      sx={{ flex: '1 1 132px' }}
+                    >
+                      高级用户设置
+                    </Button>
+                    <Button
+                      variant="outlined"
                       startIcon={<ShoppingCartRounded />}
                       sx={{ flex: '1 1 96px' }}
                       onClick={() => {
@@ -1035,6 +1105,146 @@ const HomePage = () => {
               </Box>
             </Stack>
           </Paper>
+          <Dialog
+            open={advancedOpen}
+            onClose={() => setAdvancedOpen(false)}
+            fullWidth
+            maxWidth="xs"
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: '20px',
+                  border: '1px solid rgba(70,100,145,.16)',
+                  background:
+                    'linear-gradient(145deg, rgba(255,255,255,.98), rgba(244,249,255,.96))',
+                },
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 900, pb: 0.5 }}>
+              高级用户设置
+            </DialogTitle>
+            <DialogContent sx={{ pt: 1.5 }}>
+              <Stack spacing={1.25}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.25,
+                    borderRadius: '14px',
+                    border: '1px solid rgba(45,65,105,.12)',
+                    bgcolor: 'rgba(255,255,255,.72)',
+                  }}
+                >
+                  <Stack spacing={1}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: 'center' }}
+                    >
+                      <RuleRounded sx={{ color: '#1c8dff' }} />
+                      <Box sx={{ flex: 1 }}>
+                        <Typography sx={{ fontWeight: 850 }}>
+                          规则设置
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: 12, color: 'rgba(36,46,66,.62)' }}
+                        >
+                          规则模式适合日常使用，全局模式会全部走代理。
+                        </Typography>
+                      </Box>
+                    </Stack>
+                    <ToggleButtonGroup
+                      exclusive
+                      value={mode}
+                      onChange={changeMode}
+                      disabled={busy}
+                      fullWidth
+                      size="small"
+                      sx={{
+                        '& .MuiToggleButton-root': {
+                          py: 0.7,
+                          fontWeight: 800,
+                          borderColor: 'rgba(45,65,105,.16)',
+                          '&.Mui-selected': {
+                            color: '#fff',
+                            bgcolor: '#1c8dff',
+                          },
+                          '&.Mui-selected:hover': {
+                            bgcolor: '#167ce3',
+                          },
+                        },
+                      }}
+                    >
+                      <ToggleButton value="rule">规则模式</ToggleButton>
+                      <ToggleButton value="global">全局模式</ToggleButton>
+                    </ToggleButtonGroup>
+                  </Stack>
+                </Paper>
+
+                {[
+                  {
+                    icon: <DnsRounded sx={{ color: '#7c5cff' }} />,
+                    title: 'DNS 覆写',
+                    desc: '需要自定义 DNS 时再开启，默认保持关闭更稳。',
+                    checked: dnsOverwriteOn,
+                    onChange: toggleDnsOverwrite,
+                  },
+                  {
+                    icon: <LanRounded sx={{ color: '#12a87f' }} />,
+                    title: '局域网连接',
+                    desc: '允许同一局域网设备连接本机代理。',
+                    checked: allowLanOn,
+                    onChange: toggleAllowLan,
+                  },
+                  {
+                    icon: <SettingsRounded sx={{ color: '#ff8a3d' }} />,
+                    title: '系统代理守护',
+                    desc: '系统代理被系统或浏览器改掉时自动恢复。',
+                    checked: proxyGuardOn,
+                    onChange: toggleProxyGuard,
+                  },
+                ].map((item) => (
+                  <Paper
+                    key={item.title}
+                    elevation={0}
+                    sx={{
+                      p: 1.25,
+                      borderRadius: '14px',
+                      border: '1px solid rgba(45,65,105,.12)',
+                      bgcolor: 'rgba(255,255,255,.72)',
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={1.1}
+                      sx={{ alignItems: 'center' }}
+                    >
+                      {item.icon}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 850 }}>
+                          {item.title}
+                        </Typography>
+                        <Typography
+                          sx={{ fontSize: 12, color: 'rgba(36,46,66,.62)' }}
+                        >
+                          {item.desc}
+                        </Typography>
+                      </Box>
+                      <Switch
+                        edge="end"
+                        disabled={busy}
+                        checked={item.checked}
+                        onChange={(_, checked) => item.onChange(checked)}
+                      />
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2.5 }}>
+              <Button onClick={() => setAdvancedOpen(false)}>完成</Button>
+            </DialogActions>
+          </Dialog>
           <Dialog
             open={codeDialogOpen}
             onClose={() => {

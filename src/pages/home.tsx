@@ -1,7 +1,9 @@
 import {
+  AddRounded,
   BoltRounded,
   BuildRounded,
   CloudSyncRounded,
+  DeleteRounded,
   DnsRounded,
   KeyRounded,
   LanRounded,
@@ -22,6 +24,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Paper,
@@ -152,6 +155,12 @@ type RuleSnapshot = {
   subRules?: unknown
 }
 
+type TrafficRuleItem = {
+  raw: string
+  domain: string
+  policy: string
+}
+
 class AccessCodeStateError extends Error {
   constructor(
     message: string,
@@ -209,6 +218,37 @@ const restoreRuleSnapshot = async (
   if (snapshot.subRules !== undefined) data['sub-rules'] = snapshot.subRules
 
   await saveProfileFile(profileUid, yaml.dump(data, { lineWidth: -1 }))
+}
+
+const normalizeRuleDomain = (input: string) => {
+  const value = input.trim()
+  if (!value) return ''
+
+  try {
+    const url = new URL(value.includes('://') ? value : `https://${value}`)
+    return url.hostname.replace(/^\*\./, '').toLowerCase()
+  } catch {
+    return value
+      .replace(/^\w+:\/\//, '')
+      .split('/')[0]
+      .split(':')[0]
+      .replace(/^\*\./, '')
+      .toLowerCase()
+  }
+}
+
+const parseTrafficRule = (rule: unknown): TrafficRuleItem | null => {
+  if (typeof rule !== 'string') return null
+  const parts = rule.split(',').map((part) => part.trim())
+  if (parts.length < 3) return null
+  if (!['DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD'].includes(parts[0])) {
+    return null
+  }
+  return {
+    raw: rule,
+    domain: parts[1],
+    policy: parts[2],
+  }
 }
 
 const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
@@ -286,6 +326,10 @@ const HomePage = () => {
   )
   const [codeDialogOpen, setCodeDialogOpen] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [trafficRuleOpen, setTrafficRuleOpen] = useState(false)
+  const [trafficRuleInput, setTrafficRuleInput] = useState('')
+  const [trafficRulePolicy, setTrafficRulePolicy] = useState('')
+  const [trafficRules, setTrafficRules] = useState<TrafficRuleItem[]>([])
   const [busy, setBusy] = useState(false)
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
@@ -320,6 +364,17 @@ const HomePage = () => {
   const dnsOverwriteOn = verge?.enable_dns_settings ?? false
   const proxyGuardOn = verge?.enable_proxy_guard ?? true
   const powerHint = running ? '已启动，点击停止' : '还没有启动，点击启动'
+  const rulesProfileUid = current?.option?.rules || ''
+  const rulePolicies = useMemo(() => {
+    const values = [
+      primaryGroup?.name,
+      selectedNode,
+      ...nodes.map((node) => node.name),
+      'DIRECT',
+      'REJECT',
+    ].filter((value): value is string => Boolean(value))
+    return Array.from(new Set(values))
+  }, [nodes, primaryGroup?.name, selectedNode])
   const verifyCode = async (input: string): Promise<ValidVerifyResponse> => {
     const params = new URLSearchParams({
       import: '1',
@@ -715,6 +770,109 @@ const HomePage = () => {
       setDelayTesting(false)
     }
   })
+
+  const loadTrafficRules = useCallback(async () => {
+    if (!rulesProfileUid) {
+      setTrafficRules([])
+      return
+    }
+
+    try {
+      const content = await readProfileFile(rulesProfileUid)
+      const data = yaml.load(content) as {
+        prepend?: unknown
+        append?: unknown
+      } | null
+      const prepend = Array.isArray(data?.prepend) ? data.prepend : []
+      const append = Array.isArray(data?.append) ? data.append : []
+      setTrafficRules(
+        [...prepend, ...append]
+          .map(parseTrafficRule)
+          .filter((item): item is TrafficRuleItem => Boolean(item)),
+      )
+    } catch {
+      setTrafficRules([])
+    }
+  }, [rulesProfileUid])
+
+  const saveTrafficRuleAppend = async (nextAppendRule: string) => {
+    if (!rulesProfileUid) throw new Error('当前订阅没有可编辑的规则文件')
+
+    const content = await readProfileFile(rulesProfileUid)
+    const data = (yaml.load(content) as Record<string, unknown> | null) || {}
+    const next = parseTrafficRule(nextAppendRule)
+    const removeSameDomain = (rules: unknown[]) =>
+      rules.filter((rule) => {
+        const parsed = parseTrafficRule(rule)
+        return !parsed || !next || parsed.domain !== next.domain
+      })
+
+    if (Array.isArray(data.prepend)) {
+      data.prepend = removeSameDomain(data.prepend)
+    }
+
+    const append = Array.isArray(data.append) ? data.append : []
+    const withoutSameDomain = removeSameDomain(append)
+
+    data.append = [...withoutSameDomain, nextAppendRule]
+    await saveProfileFile(rulesProfileUid, yaml.dump(data, { lineWidth: -1 }))
+  }
+
+  const addTrafficRule = useLockFn(async () => {
+    const domain = normalizeRuleDomain(trafficRuleInput)
+    const policy = trafficRulePolicy || selectedNode || primaryGroup?.name || ''
+
+    if (!domain) {
+      setStatus('请输入要分流的网址或域名')
+      return
+    }
+    if (!policy) {
+      setStatus('请选择这个网址要走的节点')
+      return
+    }
+
+    setBusy(true)
+    try {
+      await saveTrafficRuleAppend(`DOMAIN-SUFFIX,${domain},${policy}`)
+      setTrafficRuleInput('')
+      setTrafficRulePolicy(policy)
+      await loadTrafficRules()
+      await refreshAll()
+      setStatus(`已添加规则：${domain} 走 ${policy}`)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
+  const deleteTrafficRule = useLockFn(async (target: TrafficRuleItem) => {
+    if (!rulesProfileUid) return
+
+    setBusy(true)
+    try {
+      const content = await readProfileFile(rulesProfileUid)
+      const data = (yaml.load(content) as Record<string, unknown> | null) || {}
+      for (const key of ['prepend', 'append']) {
+        if (Array.isArray(data[key])) {
+          data[key] = data[key].filter((rule) => rule !== target.raw)
+        }
+      }
+      await saveProfileFile(rulesProfileUid, yaml.dump(data, { lineWidth: -1 }))
+      await loadTrafficRules()
+      await refreshAll()
+      setStatus(`已删除规则：${target.domain}`)
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : String(error))
+    } finally {
+      setBusy(false)
+    }
+  })
+
+  useEffect(() => {
+    if (!trafficRuleOpen) return
+    loadTrafficRules()
+  }, [loadTrafficRules, trafficRuleOpen])
 
   const toggleAllowLan = useLockFn(async (checked: boolean) => {
     setBusy(true)
@@ -1244,6 +1402,50 @@ const HomePage = () => {
                   </Stack>
                 </Paper>
 
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 1.25,
+                    borderRadius: '14px',
+                    border: '1px solid rgba(45,65,105,.12)',
+                    bgcolor: 'rgba(255,255,255,.72)',
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={1.1}
+                    sx={{ alignItems: 'center' }}
+                  >
+                    <RuleRounded sx={{ color: '#18a679' }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 850 }}>
+                        流量规则编辑
+                      </Typography>
+                      <Typography
+                        sx={{ fontSize: 12, color: 'rgba(36,46,66,.62)' }}
+                      >
+                        设置某个网址或域名固定走指定节点。
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={!rulesProfileUid}
+                      onClick={() => {
+                        setTrafficRulePolicy(
+                          trafficRulePolicy ||
+                            selectedNode ||
+                            primaryGroup?.name ||
+                            '',
+                        )
+                        setTrafficRuleOpen(true)
+                      }}
+                    >
+                      编辑
+                    </Button>
+                  </Stack>
+                </Paper>
+
                 {[
                   {
                     icon: <DnsRounded sx={{ color: '#7c5cff' }} />,
@@ -1306,6 +1508,145 @@ const HomePage = () => {
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2.5 }}>
               <Button onClick={() => setAdvancedOpen(false)}>完成</Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={trafficRuleOpen}
+            onClose={() => setTrafficRuleOpen(false)}
+            fullWidth
+            maxWidth="sm"
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: '20px',
+                  border: '1px solid rgba(70,100,145,.16)',
+                  background:
+                    'linear-gradient(145deg, rgba(255,255,255,.98), rgba(244,249,255,.96))',
+                },
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 900, pb: 0.5 }}>
+              流量规则编辑
+            </DialogTitle>
+            <DialogContent sx={{ pt: 1.5 }}>
+              <Stack spacing={1.25}>
+                <Typography sx={{ fontSize: 13, color: 'rgba(36,46,66,.66)' }}>
+                  输入网址或域名，选择要走的节点。比如 google.com
+                  走日本节点，baidu.com 走 DIRECT。
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    sx={fieldSx}
+                    label="网址或域名"
+                    placeholder="例如 google.com 或 https://google.com"
+                    value={trafficRuleInput}
+                    disabled={busy}
+                    onChange={(event) =>
+                      setTrafficRuleInput(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'Enter' &&
+                        trafficRuleInput.trim() &&
+                        !busy
+                      ) {
+                        addTrafficRule()
+                      }
+                    }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 180 }}>
+                    <InputLabel>走哪个节点</InputLabel>
+                    <Select
+                      sx={fieldSx}
+                      label="走哪个节点"
+                      value={trafficRulePolicy}
+                      disabled={busy || rulePolicies.length === 0}
+                      onChange={(event) =>
+                        setTrafficRulePolicy(event.target.value)
+                      }
+                    >
+                      {rulePolicies.map((policy) => (
+                        <MenuItem key={policy} value={policy}>
+                          {policy}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddRounded />}
+                    disabled={
+                      busy || !trafficRuleInput.trim() || !trafficRulePolicy
+                    }
+                    onClick={addTrafficRule}
+                    sx={{
+                      minWidth: 96,
+                      bgcolor: '#1c8dff',
+                      fontWeight: 800,
+                      '&:hover': { bgcolor: '#167ce3' },
+                    }}
+                  >
+                    添加
+                  </Button>
+                </Stack>
+
+                <Stack spacing={0.8}>
+                  {trafficRules.length === 0 ? (
+                    <Alert severity="info" sx={{ py: 0.35 }}>
+                      还没有自定义流量规则。
+                    </Alert>
+                  ) : (
+                    trafficRules.map((rule) => (
+                      <Paper
+                        key={`${rule.domain}-${rule.policy}-${rule.raw}`}
+                        elevation={0}
+                        sx={{
+                          p: 1,
+                          borderRadius: '12px',
+                          border: '1px solid rgba(45,65,105,.12)',
+                          bgcolor: 'rgba(255,255,255,.78)',
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          sx={{ alignItems: 'center' }}
+                        >
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontWeight: 850 }}>
+                              {rule.domain}
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 12,
+                                color: 'rgba(36,46,66,.62)',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              走 {rule.policy}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            disabled={busy}
+                            onClick={() => deleteTrafficRule(rule)}
+                          >
+                            <DeleteRounded fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      </Paper>
+                    ))
+                  )}
+                </Stack>
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2.5 }}>
+              <Button onClick={() => setTrafficRuleOpen(false)}>完成</Button>
             </DialogActions>
           </Dialog>
           <Dialog

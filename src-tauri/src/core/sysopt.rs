@@ -1,8 +1,9 @@
 use crate::{
     config::{Config, IVerge},
+    core::{CoreManager, manager::RunningMode},
     singleton,
 };
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clash_verge_logging::{Type, logging};
 use parking_lot::RwLock;
 use scopeguard::defer;
@@ -16,6 +17,7 @@ use std::{
 };
 use sysproxy::{Autoproxy, GuardMonitor, GuardType, Sysproxy};
 use tokio::sync::Mutex as TokioMutex;
+use tokio::{net::TcpStream, time::timeout};
 
 pub struct Sysopt {
     update_lock: TokioMutex<()>,
@@ -133,6 +135,10 @@ impl Sysopt {
         // 先 await, 避免持有锁导致的 Send 问题
         let bypass = get_bypass().await;
 
+        if sys_enable {
+            ensure_local_proxy_ready(port).await?;
+        }
+
         let (sys, auto, guard_type) = {
             let (sys, auto) = &mut *self.inner_proxy.write();
             sys.host = proxy_host.clone().into();
@@ -216,6 +222,47 @@ impl Sysopt {
 
         Ok(())
     }
+}
+
+async fn is_local_proxy_ready(port: u16) -> bool {
+    timeout(Duration::from_millis(500), TcpStream::connect(("127.0.0.1", port)))
+        .await
+        .is_ok_and(|result| result.is_ok())
+}
+
+async fn wait_local_proxy_ready(port: u16, retries: usize) -> bool {
+    for _ in 0..retries {
+        if is_local_proxy_ready(port).await {
+            return true;
+        }
+        tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    false
+}
+
+async fn ensure_local_proxy_ready(port: u16) -> Result<()> {
+    if wait_local_proxy_ready(port, 4).await {
+        return Ok(());
+    }
+
+    logging!(
+        warn,
+        Type::Core,
+        "Local mixed proxy port {} is not ready before enabling system proxy",
+        port
+    );
+
+    let core = CoreManager::global();
+    match *core.get_running_mode() {
+        RunningMode::NotRunning => core.start_core().await?,
+        RunningMode::Sidecar | RunningMode::Service => core.restart_core().await?,
+    }
+
+    if wait_local_proxy_ready(port, 40).await {
+        return Ok(());
+    }
+
+    bail!("本地代理端口 127.0.0.1:{port} 没有启动成功，已取消开启系统代理，请先重新订阅或重启客户端后再试");
 }
 
 #[cfg(target_os = "windows")]

@@ -488,9 +488,9 @@ impl ServiceManager {
 
     pub const fn config() -> clash_verge_service_ipc::IpcConfig {
         clash_verge_service_ipc::IpcConfig {
-            default_timeout: Duration::from_millis(150),
+            default_timeout: Duration::from_millis(500),
             retry_delay: Duration::from_millis(250),
-            max_retries: 20,
+            max_retries: 80,
         }
     }
 

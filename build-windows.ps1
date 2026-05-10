@@ -35,6 +35,14 @@ if ($Mode -eq "fast") {
 Write-Host ""
 Write-Host "Build finished."
 Write-Host "Installer output:"
-Get-ChildItem -Path "target\$Target\release\bundle\nsis","target\release\bundle\nsis" -Filter "*.exe" -ErrorAction SilentlyContinue |
+$OutputDirs = @("target\$Target\release\bundle\nsis", "target\release\bundle\nsis") |
+  Where-Object { Test-Path $_ }
+
+Get-ChildItem -Path $OutputDirs -Filter "*.exe" -ErrorAction SilentlyContinue |
   Sort-Object LastWriteTime -Descending |
   Select-Object -First 10 FullName, LastWriteTime
+
+$OpenDir = $OutputDirs | Select-Object -First 1
+if ($OpenDir) {
+  Invoke-Item $OpenDir
+}

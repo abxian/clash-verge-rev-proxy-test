@@ -240,6 +240,9 @@ pub fn run() {
 
             resolve::init_work_dir_and_logger()?;
 
+            #[cfg(target_os = "windows")]
+            utils::process_guard::kill_sidecars("startup cleanup");
+
             logging!(info, Type::Setup, "开始应用初始化...");
             if let Err(e) = app_init::setup_autostart(app) {
                 logging!(error, Type::Setup, "Failed to setup autostart: {}", e);

@@ -7,6 +7,8 @@ pub mod init;
 pub mod linux;
 pub mod network;
 pub mod notification;
+#[cfg(target_os = "windows")]
+pub mod process_guard;
 pub mod resolve;
 #[cfg(target_os = "windows")]
 pub mod schtasks;

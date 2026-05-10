@@ -102,7 +102,7 @@ pub async fn clean_async() -> bool {
         let stop_timeout = Duration::from_secs(3);
 
         logging!(info, Type::System, "stop core");
-        match timeout(stop_timeout, CoreManager::global().stop_core()).await {
+        let stopped = match timeout(stop_timeout, CoreManager::global().stop_core()).await {
             Ok(_) => {
                 logging!(info, Type::Window, "core已停止");
                 true
@@ -115,7 +115,12 @@ pub async fn clean_async() -> bool {
                 );
                 false
             }
-        }
+        };
+
+        #[cfg(target_os = "windows")]
+        crate::utils::process_guard::kill_sidecars("exit cleanup");
+
+        stopped
     });
 
     // DNS恢复（仅macOS）

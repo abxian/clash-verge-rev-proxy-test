@@ -254,10 +254,15 @@ const parseTrafficRule = (rule: unknown): TrafficRuleItem | null => {
 }
 
 const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
-  const selectable = groups.filter((group) => {
+  const manualGroups = groups.filter((group) => {
     const type = String(group.type || '').toLowerCase()
-    return type === 'selector' || type === 'urltest' || type === 'fallback'
+    return type === 'selector' || type === 'select'
   })
+  const fallbackGroups = groups.filter((group) => {
+    const type = String(group.type || '').toLowerCase()
+    return type === 'urltest' || type === 'url-test' || type === 'fallback'
+  })
+  const selectable = manualGroups.length ? manualGroups : fallbackGroups
 
   return (
     selectable.find((group) =>
@@ -268,6 +273,8 @@ const pickPrimaryGroup = (groups: IProxyGroupItem[] = []) => {
     selectable.find((group) =>
       group.all?.some((proxy) => !['DIRECT', 'REJECT'].includes(proxy.name)),
     ) ||
+    manualGroups[0] ||
+    fallbackGroups[0] ||
     groups[0]
   )
 }
@@ -354,7 +361,12 @@ const HomePage = () => {
       )
   }, [primaryGroup, delaySortTick])
 
-  const selectedNode = primaryGroup?.now || ''
+  const selectedNode = useMemo(() => {
+    if (!primaryGroup) return ''
+    const current = primaryGroup.now || ''
+    if (current && nodes.some((node) => node.name === current)) return current
+    return nodes[0]?.name || ''
+  }, [nodes, primaryGroup])
   const mode = (clashConfig?.mode || 'rule').toLowerCase()
   const tunOn = verge?.enable_tun_mode || false
   const proxyStateMismatch = systemProxyConfigOn && !systemProxyOn

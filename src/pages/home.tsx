@@ -75,6 +75,7 @@ const CODE_UPDATE_VERSION_STORAGE_KEY = 'shenxianyun.updateVersion'
 const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
 const DELAY_TIMEOUT = 5000
 const TRAFFIC_REPORT_INTERVAL_MS = 30_000
+const MAX_TRAFFIC_REPORT_DELTA = 5 * 1024 * 1024 * 1024
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
 const fieldSx = {
   '& .MuiInputLabel-root': {
@@ -505,6 +506,13 @@ const HomePage = () => {
     const uploadDelta = current.upload - previous.upload
     const downloadDelta = current.download - previous.download
     if (uploadDelta <= 0 && downloadDelta <= 0) return
+    if (
+      uploadDelta > MAX_TRAFFIC_REPORT_DELTA ||
+      downloadDelta > MAX_TRAFFIC_REPORT_DELTA
+    ) {
+      lastReportedTrafficRef.current = current
+      return
+    }
 
     await tauriFetch(
       `${SUBSCRIPTION_BASE_URL}/api/client/traffic/${encodeURIComponent(value)}`,
@@ -812,7 +820,10 @@ const HomePage = () => {
       await startCore().catch(() => restartCore())
       await mutateSystemState()
 
-      if (isTunModeAvailable) {
+      if (tunOn) await patchVerge({ enable_tun_mode: false })
+      const useTunForPowerStart =
+        localStorage.getItem('SHENXIANYUN_POWER_START_TUN') === '1'
+      if (useTunForPowerStart && isTunModeAvailable) {
         await patchVerge({ enable_tun_mode: true })
         if (systemProxyOn || systemProxyConfigOn) await toggleSystemProxy(false)
         setStatus('已启动 TUN 模式')

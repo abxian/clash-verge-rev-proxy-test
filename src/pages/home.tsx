@@ -76,6 +76,7 @@ const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
 const DELAY_TIMEOUT = 5000
 const TRAFFIC_REPORT_INTERVAL_MS = 30_000
 const MAX_TRAFFIC_REPORT_DELTA = 5 * 1024 * 1024 * 1024
+const DESKTOP_VERSION = '2.4.9'
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.9'
 const fieldSx = {
   '& .MuiInputLabel-root': {
@@ -154,6 +155,13 @@ type UpdateStateResponse = {
   message?: string
 }
 
+type DesktopVersionResponse = {
+  ok?: boolean
+  latest_version?: string
+  download_url?: string
+  notes?: string
+}
+
 type RuleSnapshot = {
   rules?: unknown
   ruleProviders?: unknown
@@ -179,6 +187,27 @@ const parseExpireTime = (value: string) => {
   if (!value) return Number.POSITIVE_INFINITY
   const time = Date.parse(value.replace(' ', 'T'))
   return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time
+}
+
+const compareVersion = (remote: string, current: string) => {
+  const parse = (value: string) =>
+    value
+      .replace(/^v/i, '')
+      .split(/[.+-]/)[0]
+      .split('.')
+      .map((part) => Number.parseInt(part, 10) || 0)
+
+  const left = parse(remote)
+  const right = parse(current)
+  const max = Math.max(left.length, right.length, 3)
+
+  for (let index = 0; index < max; index += 1) {
+    const a = left[index] || 0
+    const b = right[index] || 0
+    if (a > b) return 1
+    if (a < b) return -1
+  }
+  return 0
 }
 
 const readRuleSnapshot = async (
@@ -343,6 +372,8 @@ const HomePage = () => {
   const [trafficRuleInput, setTrafficRuleInput] = useState('')
   const [trafficRulePolicy, setTrafficRulePolicy] = useState('')
   const [trafficRules, setTrafficRules] = useState<TrafficRuleItem[]>([])
+  const [desktopUpdate, setDesktopUpdate] =
+    useState<DesktopVersionResponse | null>(null)
   const [busy, setBusy] = useState(false)
   const [delayTesting, setDelayTesting] = useState(false)
   const [delaySortTick, setDelaySortTick] = useState(0)
@@ -458,6 +489,37 @@ const HomePage = () => {
     },
     [],
   )
+
+  const checkDesktopUpdate = useCallback(async () => {
+    const response = await tauriFetch(
+      `${SUBSCRIPTION_BASE_URL}/api/desktop-version?platform=windows`,
+      {
+        method: 'GET',
+        connectTimeout: 8000,
+        headers: {
+          'User-Agent': CLIENT_UA,
+          'X-Client-Id': getClientId(),
+          'X-Client-Type': 'shenxianyun-windows',
+        },
+      },
+    )
+    const data = (await response.json()) as DesktopVersionResponse
+    const latestVersion = data.latest_version?.trim() || ''
+    const downloadUrl = data.download_url?.trim() || ''
+    if (
+      response.ok &&
+      data.ok &&
+      latestVersion &&
+      downloadUrl &&
+      compareVersion(latestVersion, DESKTOP_VERSION) > 0
+    ) {
+      setDesktopUpdate({
+        ...data,
+        latest_version: latestVersion,
+        download_url: downloadUrl,
+      })
+    }
+  }, [])
 
   const updateCurrentProfileKeepingRules = useCallback(async () => {
     const profileUid = current?.uid
@@ -643,6 +705,10 @@ const HomePage = () => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    checkDesktopUpdate().catch(() => undefined)
+  }, [checkDesktopUpdate])
 
   useEffect(() => {
     if (!running || !savedCode) return
@@ -1769,6 +1835,58 @@ const HomePage = () => {
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2.5 }}>
               <Button onClick={() => setTrafficRuleOpen(false)}>完成</Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={Boolean(desktopUpdate)}
+            onClose={() => setDesktopUpdate(null)}
+            fullWidth
+            maxWidth="xs"
+            slotProps={{
+              paper: {
+                sx: {
+                  borderRadius: '18px',
+                  border: '1px solid rgba(70,100,145,.16)',
+                  background:
+                    'linear-gradient(145deg, rgba(255,255,255,.98), rgba(244,249,255,.96))',
+                },
+              },
+            }}
+          >
+            <DialogTitle sx={{ fontWeight: 900, pb: 0.5 }}>
+              发现新版本
+            </DialogTitle>
+            <DialogContent sx={{ pt: 1.5 }}>
+              <Stack spacing={1.2}>
+                <Typography sx={{ color: 'rgba(36,46,66,.78)' }}>
+                  当前版本 {DESKTOP_VERSION}，最新版本{' '}
+                  {desktopUpdate?.latest_version}
+                </Typography>
+                {desktopUpdate?.notes ? (
+                  <Alert severity="info" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {desktopUpdate.notes}
+                  </Alert>
+                ) : null}
+              </Stack>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2.5 }}>
+              <Button onClick={() => setDesktopUpdate(null)}>稍后</Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  const url = desktopUpdate?.download_url
+                  setDesktopUpdate(null)
+                  if (url) openWebUrl(url).catch(() => undefined)
+                }}
+                sx={{
+                  minWidth: 112,
+                  bgcolor: '#1c8dff',
+                  fontWeight: 800,
+                  '&:hover': { bgcolor: '#167ce3' },
+                }}
+              >
+                前往下载
+              </Button>
             </DialogActions>
           </Dialog>
           <Dialog

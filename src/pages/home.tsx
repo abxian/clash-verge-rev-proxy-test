@@ -128,7 +128,9 @@ const outlineButtonSx = {
 const getClientId = () => {
   const saved = localStorage.getItem(CLIENT_ID_STORAGE_KEY)
   if (saved) return saved
-  const generated = crypto.randomUUID()
+  const generated =
+    crypto.randomUUID?.() ||
+    `sx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   localStorage.setItem(CLIENT_ID_STORAGE_KEY, generated)
   return generated
 }
@@ -430,13 +432,17 @@ const HomePage = () => {
 
   const updateState = useCallback(
     async (input: string): Promise<UpdateStateResponse> => {
+      const params = new URLSearchParams({
+        client_id: getClientId(),
+      })
       const response = await tauriFetch(
-        `${SUBSCRIPTION_BASE_URL}/api/update-state/${encodeURIComponent(input)}`,
+        `${SUBSCRIPTION_BASE_URL}/api/update-state/${encodeURIComponent(input)}?${params.toString()}`,
         {
           method: 'GET',
           connectTimeout: 8000,
           headers: {
             'User-Agent': CLIENT_UA,
+            'X-Client-Id': getClientId(),
             'X-Client-Type': 'shenxianyun-windows',
           },
         },
@@ -481,6 +487,7 @@ const HomePage = () => {
           connectTimeout: 5000,
           headers: {
             'User-Agent': CLIENT_UA,
+            'X-Client-Id': getClientId(),
             'X-Client-Type': 'shenxianyun-windows',
           },
         },

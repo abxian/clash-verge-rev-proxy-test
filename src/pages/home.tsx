@@ -67,6 +67,7 @@ import {
   updateProfile,
 } from '@/services/cmds'
 import delayManager from '@/services/delay'
+import getSystem from '@/utils/get-system'
 
 const SUBSCRIPTION_BASE_URL = 'https://sub.jc116.com'
 const CODE_STORAGE_KEY = 'shenxianyun.accessCode'
@@ -78,6 +79,7 @@ const TRAFFIC_REPORT_INTERVAL_MS = 30_000
 const MAX_TRAFFIC_REPORT_DELTA = 5 * 1024 * 1024 * 1024
 const DESKTOP_VERSION = '2.4.9'
 const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.9'
+const DESKTOP_PLATFORM = getSystem()
 const fieldSx = {
   '& .MuiInputLabel-root': {
     color: 'rgba(36,46,66,.66)',
@@ -159,7 +161,12 @@ type DesktopVersionResponse = {
   ok?: boolean
   latest_version?: string
   download_url?: string
+  windows_url?: string
+  macos_url?: string
+  linux_deb_url?: string
+  linux_rpm_url?: string
   notes?: string
+  platform?: string
 }
 
 type RuleSnapshot = {
@@ -492,7 +499,7 @@ const HomePage = () => {
 
   const checkDesktopUpdate = useCallback(async () => {
     const response = await tauriFetch(
-      `${SUBSCRIPTION_BASE_URL}/api/desktop-version?platform=windows`,
+      `${SUBSCRIPTION_BASE_URL}/api/desktop-version?platform=${encodeURIComponent(DESKTOP_PLATFORM)}`,
       {
         method: 'GET',
         connectTimeout: 8000,
@@ -506,17 +513,23 @@ const HomePage = () => {
     const data = (await response.json()) as DesktopVersionResponse
     const latestVersion = data.latest_version?.trim() || ''
     const downloadUrl = data.download_url?.trim() || ''
+    const hasDownload =
+      Boolean(downloadUrl) ||
+      (DESKTOP_PLATFORM === 'linux' &&
+        Boolean(data.linux_deb_url?.trim() || data.linux_rpm_url?.trim()))
     if (
       response.ok &&
       data.ok &&
       latestVersion &&
-      downloadUrl &&
+      hasDownload &&
       compareVersion(latestVersion, DESKTOP_VERSION) > 0
     ) {
       setDesktopUpdate({
         ...data,
         latest_version: latestVersion,
         download_url: downloadUrl,
+        linux_deb_url: data.linux_deb_url?.trim() || '',
+        linux_rpm_url: data.linux_rpm_url?.trim() || '',
       })
     }
   }, [])
@@ -1867,10 +1880,42 @@ const HomePage = () => {
                     {desktopUpdate.notes}
                   </Alert>
                 ) : null}
+                {DESKTOP_PLATFORM === 'linux' ? (
+                  <Alert severity="warning">
+                    Linux 版本不会自动下载或安装，请根据你的发行版选择 DEB 或
+                    RPM 安装包手动更新。
+                  </Alert>
+                ) : null}
               </Stack>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2.5 }}>
               <Button onClick={() => setDesktopUpdate(null)}>稍后</Button>
+              {DESKTOP_PLATFORM === 'linux' && desktopUpdate?.linux_deb_url ? (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    const url = desktopUpdate?.linux_deb_url
+                    setDesktopUpdate(null)
+                    if (url) openWebUrl(url).catch(() => undefined)
+                  }}
+                  sx={{ minWidth: 96, fontWeight: 800 }}
+                >
+                  下载 DEB
+                </Button>
+              ) : null}
+              {DESKTOP_PLATFORM === 'linux' && desktopUpdate?.linux_rpm_url ? (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    const url = desktopUpdate?.linux_rpm_url
+                    setDesktopUpdate(null)
+                    if (url) openWebUrl(url).catch(() => undefined)
+                  }}
+                  sx={{ minWidth: 96, fontWeight: 800 }}
+                >
+                  下载 RPM
+                </Button>
+              ) : null}
               <Button
                 variant="contained"
                 onClick={() => {
@@ -1885,7 +1930,7 @@ const HomePage = () => {
                   '&:hover': { bgcolor: '#167ce3' },
                 }}
               >
-                前往下载
+                {DESKTOP_PLATFORM === 'linux' ? '默认下载' : '前往下载'}
               </Button>
             </DialogActions>
           </Dialog>

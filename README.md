@@ -102,7 +102,7 @@ pnpm build --target x86_64-pc-windows-msvc
 常见产物路径：
 
 ```text
-target/release/bundle/nsis/神仙云_2.4.8_x64-setup.exe
+target/release/bundle/nsis/神仙云_2.4.9_x64-setup.exe
 target/release/shenxianyun.exe
 ```
 

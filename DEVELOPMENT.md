@@ -128,7 +128,7 @@ pnpm build --target x86_64-pc-windows-msvc
 
 ```text
 target/release/shenxianyun.exe
-target/release/bundle/nsis/神仙云_2.4.8_x64-setup.exe
+target/release/bundle/nsis/神仙云_2.4.9_x64-setup.exe
 ```
 
 只检查前端：
@@ -387,4 +387,3 @@ pnpm build --target x86_64-pc-windows-msvc
 - 本地安装包
 - 私钥或证书
 - 临时测试文件
-

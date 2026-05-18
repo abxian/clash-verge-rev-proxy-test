@@ -76,7 +76,7 @@ const CLIENT_ID_STORAGE_KEY = 'shenxianyun.clientId'
 const DELAY_TIMEOUT = 5000
 const TRAFFIC_REPORT_INTERVAL_MS = 30_000
 const MAX_TRAFFIC_REPORT_DELTA = 5 * 1024 * 1024 * 1024
-const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.8'
+const CLIENT_UA = 'JC116-Shenxianyun-Windows/2.4.9'
 const fieldSx = {
   '& .MuiInputLabel-root': {
     color: 'rgba(36,46,66,.66)',
@@ -477,7 +477,7 @@ const HomePage = () => {
         client_id: getClientId(),
         platform: 'Windows电脑',
         app_name: '神仙云桌面端',
-        app_version: '2.4.8',
+        app_version: '2.4.9',
         device_name: navigator.userAgent,
       })
       await tauriFetch(
@@ -536,7 +536,7 @@ const HomePage = () => {
           client_id: getClientId(),
           platform: 'Windows电脑',
           app_name: '神仙云桌面端',
-          app_version: '2.4.8',
+          app_version: '2.4.9',
           device_name: navigator.userAgent,
           upload_bytes: uploadDelta,
           download_bytes: downloadDelta,

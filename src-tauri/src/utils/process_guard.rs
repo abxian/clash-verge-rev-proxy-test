@@ -10,7 +10,7 @@ use windows::Win32::{
     },
 };
 
-const SIDECAR_IMAGES: [&str; 2] = ["shenxianyun-mihomo.exe", "shenxianyun-mihomo-alpha.exe"];
+const SIDECAR_IMAGES: [&str; 2] = ["verge-mihomo.exe", "verge-mihomo-alpha.exe"];
 
 pub fn kill_sidecars(reason: &str) {
     match kill_sidecars_inner(reason) {

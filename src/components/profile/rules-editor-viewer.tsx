@@ -152,7 +152,7 @@ const rules: {
   },
   {
     name: 'IN-PORT',
-    example: '17897',
+    example: '7897',
     validator: (value) => portValidator(value),
   },
   {

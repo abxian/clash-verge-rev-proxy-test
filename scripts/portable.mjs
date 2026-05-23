@@ -37,8 +37,8 @@ async function resolvePortable() {
   const zip = new AdmZip()
 
   zip.addLocalFile(path.join(releaseDir, 'shenxianyun.exe'))
-  zip.addLocalFile(path.join(releaseDir, 'shenxianyun-mihomo.exe'))
-  zip.addLocalFile(path.join(releaseDir, 'shenxianyun-mihomo-alpha.exe'))
+  zip.addLocalFile(path.join(releaseDir, 'verge-mihomo.exe'))
+  zip.addLocalFile(path.join(releaseDir, 'verge-mihomo-alpha.exe'))
   zip.addLocalFolder(path.join(releaseDir, 'resources'), 'resources')
   zip.addLocalFolder(configDir, '.config')
 

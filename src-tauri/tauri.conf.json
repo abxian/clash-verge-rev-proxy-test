@@ -13,10 +13,7 @@
     ],
     "resources": ["resources"],
     "publisher": "JC116",
-    "externalBin": [
-      "sidecar/shenxianyun-mihomo",
-      "sidecar/shenxianyun-mihomo-alpha"
-    ],
+    "externalBin": ["sidecar/verge-mihomo", "sidecar/verge-mihomo-alpha"],
     "copyright": "GNU General Public License v3.0",
     "category": "DeveloperTool",
     "shortDescription": "神仙云",

@@ -24,8 +24,11 @@
       }
     },
     "externalBin": [
-      "./sidecar/shenxianyun-mihomo",
-      "./sidecar/shenxianyun-mihomo-alpha"
+      "./sidecar/clash-verge-service",
+      "./sidecar/clash-verge-service-install",
+      "./sidecar/clash-verge-service-uninstall",
+      "./sidecar/verge-mihomo",
+      "./sidecar/verge-mihomo-alpha"
     ]
   }
 }

@@ -286,7 +286,7 @@ pub struct IVergeTheme {
 
 impl IVerge {
     /// 有效的clash核心名称
-    pub const VALID_CLASH_CORES: &'static [&'static str] = &["shenxianyun-mihomo", "shenxianyun-mihomo-alpha"];
+    pub const VALID_CLASH_CORES: &'static [&'static str] = &["verge-mihomo", "verge-mihomo-alpha"];
 
     /// 验证并修正配置文件中的clash_core值
     pub async fn validate_and_fix_config() -> Result<()> {
@@ -304,44 +304,49 @@ impl IVerge {
                 logging!(
                     warn,
                     Type::Config,
-                    "启动时发现无效的clash_core配置: '{}', 将自动修正为 'shenxianyun-mihomo'",
+                    "Invalid clash_core config found at startup: '{}', resetting to 'verge-mihomo'",
                     core
                 );
-                config.clash_core = Some("shenxianyun-mihomo".into());
+                config.clash_core = Some("verge-mihomo".into());
                 needs_fix = true;
             }
         } else {
             logging!(
                 info,
                 Type::Config,
-                "启动时发现未配置clash_core, 将设置为默认值 'shenxianyun-mihomo'"
+                "clash_core is not configured at startup, setting default to 'verge-mihomo'"
             );
-            config.clash_core = Some("shenxianyun-mihomo".into());
+            config.clash_core = Some("verge-mihomo".into());
             needs_fix = true;
         }
 
         // 修正后保存配置
-        if config.verge_mixed_port == Some(7897) {
+        if config.verge_mixed_port == Some(17897) {
             config.verge_mixed_port = Some(ports::DEFAULT_MIXED);
             needs_fix = true;
         }
-        if config.verge_socks_port == Some(7898) {
+        if config.verge_socks_port == Some(17898) {
             config.verge_socks_port = Some(ports::DEFAULT_SOCKS);
             needs_fix = true;
         }
-        if config.verge_port == Some(7899) {
+        if config.verge_port == Some(17899) {
             config.verge_port = Some(ports::DEFAULT_HTTP);
             needs_fix = true;
         }
 
         if needs_fix {
-            logging!(info, Type::Config, "正在保存修正后的配置文件...");
+            logging!(info, Type::Config, "Saving fixed config file...");
             help::save_yaml(&config_path, &config, Some("# Clash Verge Config")).await?;
-            logging!(info, Type::Config, "配置文件修正完成，需要重新加载配置");
+            logging!(info, Type::Config, "Config file fixed, reloading config");
 
             Self::reload_config_after_fix(config).await?;
         } else {
-            logging!(info, Type::Config, "clash_core配置验证通过: {:?}", config.clash_core);
+            logging!(
+                info,
+                Type::Config,
+                "clash_core config validation passed: {:?}",
+                config.clash_core
+            );
         }
 
         Ok(())
@@ -367,10 +372,10 @@ impl IVerge {
 
     pub fn get_valid_clash_core(&self) -> String {
         match self.clash_core.as_deref() {
-            Some("verge-mihomo") => "shenxianyun-mihomo".into(),
-            Some("verge-mihomo-alpha") => "shenxianyun-mihomo-alpha".into(),
+            Some("verge-mihomo") => "verge-mihomo".into(),
+            Some("verge-mihomo-alpha") => "verge-mihomo-alpha".into(),
             Some(core) => core.into(),
-            None => "shenxianyun-mihomo".into(),
+            None => "verge-mihomo".into(),
         }
     }
 
@@ -402,7 +407,7 @@ impl IVerge {
         Self {
             app_log_max_size: Some(128),
             app_log_max_count: Some(8),
-            clash_core: Some("shenxianyun-mihomo".into()),
+            clash_core: Some("verge-mihomo".into()),
             language: Some(clash_verge_i18n::system_language().into()),
             theme_mode: Some("system".into()),
             #[cfg(not(target_os = "windows"))]

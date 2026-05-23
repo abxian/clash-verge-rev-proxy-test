@@ -26,12 +26,12 @@ import { showNotice } from '@/services/notice-service'
 const VALID_CORE = [
   {
     name: 'Mihomo',
-    core: 'shenxianyun-mihomo',
+    core: 'verge-mihomo',
     chipKey: 'settings.modals.clashCore.variants.release',
   },
   {
     name: 'Mihomo Alpha',
-    core: 'shenxianyun-mihomo-alpha',
+    core: 'verge-mihomo-alpha',
     chipKey: 'settings.modals.clashCore.variants.alpha',
   },
 ]
@@ -53,7 +53,7 @@ export function ClashCoreViewer({ ref }: { ref?: Ref<DialogRef> }) {
     close: () => setOpen(false),
   }))
 
-  const { clash_core = 'shenxianyun-mihomo' } = verge ?? {}
+  const { clash_core = 'verge-mihomo' } = verge ?? {}
 
   const onCoreChange = useLockFn(async (core: string) => {
     if (core === clash_core) return

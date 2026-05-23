@@ -136,7 +136,7 @@ impl Sysopt {
         let bypass = get_bypass().await;
 
         if sys_enable {
-            ensure_local_proxy_ready(port).await?;
+            ensure_local_proxy_ready(&proxy_host, port).await?;
         }
 
         let (sys, auto, guard_type) = {
@@ -224,15 +224,40 @@ impl Sysopt {
     }
 }
 
-async fn is_local_proxy_ready(port: u16) -> bool {
-    timeout(Duration::from_millis(500), TcpStream::connect(("127.0.0.1", port)))
+fn local_proxy_probe_hosts(proxy_host: &str) -> Vec<std::string::String> {
+    let host = proxy_host
+        .trim()
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .to_ascii_lowercase();
+
+    match host.as_str() {
+        "" | "localhost" => vec!["127.0.0.1".into(), "::1".into(), "localhost".into()],
+        "0.0.0.0" | "::" => vec!["127.0.0.1".into(), "::1".into()],
+        "::1" => vec!["::1".into(), "127.0.0.1".into()],
+        host if host.starts_with("127.") => vec![host.into(), "::1".into()],
+        _ => vec![host],
+    }
+}
+
+async fn can_connect(host: &str, port: u16) -> bool {
+    timeout(Duration::from_millis(500), TcpStream::connect((host, port)))
         .await
         .is_ok_and(|result| result.is_ok())
 }
 
-async fn wait_local_proxy_ready(port: u16, retries: usize) -> bool {
+async fn is_local_proxy_ready(proxy_host: &str, port: u16) -> bool {
+    for host in local_proxy_probe_hosts(proxy_host) {
+        if can_connect(&host, port).await {
+            return true;
+        }
+    }
+    false
+}
+
+async fn wait_local_proxy_ready(proxy_host: &str, port: u16, retries: usize) -> bool {
     for _ in 0..retries {
-        if is_local_proxy_ready(port).await {
+        if is_local_proxy_ready(proxy_host, port).await {
             return true;
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
@@ -240,29 +265,48 @@ async fn wait_local_proxy_ready(port: u16, retries: usize) -> bool {
     false
 }
 
-async fn ensure_local_proxy_ready(port: u16) -> Result<()> {
-    if wait_local_proxy_ready(port, 4).await {
+async fn ensure_local_proxy_ready(proxy_host: &str, port: u16) -> Result<()> {
+    if wait_local_proxy_ready(proxy_host, port, 24).await {
         return Ok(());
     }
 
     logging!(
         warn,
         Type::Core,
-        "Local mixed proxy port {} is not ready before enabling system proxy",
+        "Local mixed proxy port {}:{} is not ready before enabling system proxy",
+        proxy_host,
         port
     );
 
     let core = CoreManager::global();
-    match *core.get_running_mode() {
-        RunningMode::NotRunning => core.start_core().await?,
-        RunningMode::Sidecar | RunningMode::Service => core.restart_core().await?,
-    }
+    let should_restart = match *core.get_running_mode() {
+        RunningMode::NotRunning => {
+            core.start_core().await?;
+            false
+        }
+        RunningMode::Sidecar | RunningMode::Service => true,
+    };
 
-    if wait_local_proxy_ready(port, 40).await {
+    if wait_local_proxy_ready(proxy_host, port, 40).await {
         return Ok(());
     }
 
-    bail!("本地代理端口 127.0.0.1:{port} 没有启动成功，已取消开启系统代理，请先重新订阅或重启客户端后再试");
+    if should_restart {
+        logging!(
+            warn,
+            Type::Core,
+            "Local mixed proxy port {}:{} is still not ready, restarting core",
+            proxy_host,
+            port
+        );
+        core.restart_core().await?;
+    }
+
+    if wait_local_proxy_ready(proxy_host, port, 40).await {
+        return Ok(());
+    }
+
+    bail!("本地代理端口 {proxy_host}:{port} 没有启动成功，已取消开启系统代理，请先重新订阅或重启客户端后再试");
 }
 
 #[cfg(target_os = "windows")]
